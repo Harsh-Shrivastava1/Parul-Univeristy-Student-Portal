@@ -22,6 +22,18 @@ const EDITABLE = {
   linkedIn: 'linkedIn',
   portfolio: 'portfolio',
   emergencyContact: 'emergencyContact',
+  // Academic + personal details, synced from the application form so SPI and the
+  // rest persist on the profile and pre-fill future applications. Enrollment /
+  // department / semester remain immutable and are intentionally excluded.
+  cgpa: 'cgpa',
+  fatherName: 'fatherName',
+  motherName: 'motherName',
+  dateOfBirth: 'dateOfBirth',
+  gender: 'gender',
+  languages: 'languages',
+  backlogs: 'backlogs',
+  attendance: 'attendance',
+  spiScores: 'spiScores',
 };
 
 // GET /api/me/profile

@@ -152,26 +152,6 @@ const ApplicationStatus: React.FC = () => {
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              {['Training Assigned', 'Training Starts', 'Training Completed', 'Returned to TEC Cell', 'Internship Starts', 'Internship Completed', 'Final Completion'].includes(currentApp.status) && (
-                <div className="flex gap-4 mb-6">
-                  <Button 
-                    onClick={() => navigate(`/applications/${currentApp.id}/training`)}
-                    className="flex-1 bg-indigo-600 hover:bg-indigo-700"
-                  >
-                    Go to Training Module
-                  </Button>
-                  {['Internship Starts', 'Internship Completed', 'Final Completion'].includes(currentApp.status) && (
-                    <Button 
-                      onClick={() => navigate(`/applications/${currentApp.id}/internship`)}
-                      className="flex-1 bg-teal-600 hover:bg-teal-700"
-                    >
-                      Go to Internship Module
-                    </Button>
-                  )}
-                </div>
-              )}
-
               {/* Timeline */}
               <div className="bg-white border border-zinc-200 rounded-2xl p-6">
                 <h3 className="font-semibold text-zinc-900 mb-6">Application Timeline</h3>

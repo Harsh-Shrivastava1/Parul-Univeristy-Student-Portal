@@ -4,6 +4,7 @@ import { tecApi, coordinatorApi } from '../lib/apiClient';
 export type DownloadType =
   | 'application-pdf'
   | 'attendance-form'
+  | 'training-application'
   | 'offer-letter'
   | 'completion-certificate';
 
@@ -19,6 +20,8 @@ export const documentService = {
     const blob =
       type === 'attendance-form'
         ? await coordinatorApi.blob(`/student/attendance-form/${applicationId}`)
+        : type === 'training-application'
+        ? await coordinatorApi.blob(`/student/training-application/${applicationId}`)
         : await tecApi.blob(`/applications/${applicationId}/documents/${type}`);
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');

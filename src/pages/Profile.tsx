@@ -31,6 +31,13 @@ const schema = z.object({
   gender: z.string().optional(),
   skills: z.string(),
   languages: z.string(),
+  // Academic fields — editable so the student fills them once and every future
+  // application form + downloaded PDF reuses them.
+  cgpa: z.string().optional(),
+  backlogs: z.string().optional(),
+  attendance: z.string().optional(),
+  sem1: z.string().optional(), sem2: z.string().optional(), sem3: z.string().optional(), sem4: z.string().optional(),
+  sem5: z.string().optional(), sem6: z.string().optional(), sem7: z.string().optional(), sem8: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -70,7 +77,15 @@ const Profile: React.FC = () => {
     }
 
     setProfile(data);
-    reset({
+    reset(toFormValues(data));
+    setLoading(false);
+  };
+
+  // Map a profile into the edit-form shape (numbers → strings for inputs).
+  const toFormValues = (data: UserType): FormValues => {
+    const s = data.spiScores ?? ({} as NonNullable<UserType['spiScores']>);
+    const str = (v: unknown) => (v === undefined || v === null ? '' : String(v));
+    return {
       name: data.name,
       contact: data.contact,
       address: data.address ?? '',
@@ -80,8 +95,12 @@ const Profile: React.FC = () => {
       gender: data.gender ?? '',
       skills: (data.skills ?? []).join(', '),
       languages: (data.languages ?? []).join(', '),
-    });
-    setLoading(false);
+      cgpa: data.cgpa ? str(data.cgpa) : '',
+      backlogs: str(data.backlogs),
+      attendance: str(data.attendance),
+      sem1: str(s.sem1), sem2: str(s.sem2), sem3: str(s.sem3), sem4: str(s.sem4),
+      sem5: str(s.sem5), sem6: str(s.sem6), sem7: str(s.sem7), sem8: str(s.sem8),
+    };
   };
 
   useEffect(() => { loadProfile(); }, [authUser]);
@@ -90,17 +109,33 @@ const Profile: React.FC = () => {
     if (!authUser || !profile) return;
     setSaving(true);
     try {
+      const num = (v?: string) => (v === undefined || v.trim() === '' ? undefined : Number(v));
+      const spiScores: Record<string, number> = {};
+      ([1, 2, 3, 4, 5, 6, 7, 8] as const).forEach((i) => {
+        const n = num(data[`sem${i}` as keyof FormValues] as string | undefined);
+        if (n !== undefined && !isNaN(n)) spiScores[`sem${i}`] = n;
+      });
       const updated = await profileService.updateUserProfile(authUser.enrollmentNumber, {
-        ...data,
+        name: data.name,
+        contact: data.contact,
+        address: data.address,
+        fatherName: data.fatherName,
+        motherName: data.motherName,
+        dateOfBirth: data.dateOfBirth,
+        gender: data.gender,
         skills: data.skills.split(',').map((s) => s.trim()).filter(Boolean),
         languages: data.languages.split(',').map((l) => l.trim()).filter(Boolean),
-      });
+        cgpa: num(data.cgpa),
+        backlogs: num(data.backlogs),
+        attendance: num(data.attendance),
+        spiScores,
+      } as never);
       if (updated) {
         setProfile(updated);
         login(updated);
       }
       setEditing(false);
-      toast.success('Profile saved. Full editing is managed via the Cell Coordinator portal.');
+      toast.success('Profile saved. These details now pre-fill every internship application.');
     } catch {
       toast.error('Failed to save profile.');
     } finally {
@@ -109,19 +144,7 @@ const Profile: React.FC = () => {
   };
 
   const handleCancel = () => {
-    if (profile) {
-      reset({
-        name: profile.name,
-        contact: profile.contact,
-        address: profile.address,
-        fatherName: profile.fatherName ?? '',
-        motherName: profile.motherName ?? '',
-        dateOfBirth: profile.dateOfBirth ?? '',
-        gender: profile.gender ?? '',
-        skills: (profile.skills ?? []).join(', '),
-        languages: (profile.languages ?? []).join(', '),
-      });
-    }
+    if (profile) reset(toFormValues(profile));
     setEditing(false);
   };
 
@@ -143,12 +166,12 @@ const Profile: React.FC = () => {
     ['Training Starts', 'Training Completed', 'Returned to TEC Cell', 'Internship Starts', 'Internship Completed', 'Final Completion'].includes(app.status)
   );
 
-  const handleDownloadAttendance = async () => {
+  const handleDownloadTrainingForm = async () => {
     if (!attendanceApp) return;
     try {
-      await documentService.download(attendanceApp.id, 'attendance-form', `PU_Attendance_${attendanceApp.id}.pdf`);
+      await documentService.download(attendanceApp.id, 'training-application', `Training_Application_${attendanceApp.id}.pdf`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Attendance form is not available yet.');
+      toast.error(e instanceof Error ? e.message : 'Training application form is not available yet.');
     }
   };
 
@@ -210,14 +233,16 @@ const Profile: React.FC = () => {
             </div>
             <p className="text-zinc-400 text-xs mt-1 font-mono tracking-wide">ID: {profile.enrollmentNumber}</p>
             {applications.some(app => ['Training Starts', 'Training Completed', 'Returned to TEC Cell', 'Internship Starts', 'Internship Completed', 'Final Completion'].includes(app.status)) && (
-              <Button
-                variant="outline"
-                className="mt-3 gap-2 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800"
-                onClick={handleDownloadAttendance}
-              >
-                <FileText size={16} />
-                Download Attendance Form PDF
-              </Button>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  className="gap-2 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800"
+                  onClick={handleDownloadTrainingForm}
+                >
+                  <FileText size={16} />
+                  Download Training Attendance Application Form
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -288,16 +313,13 @@ const Profile: React.FC = () => {
           <div className="bg-white border border-zinc-200 rounded-2xl p-6 space-y-6">
             <div>
               <h3 className="font-semibold text-zinc-900 mb-4">Academic Information</h3>
-              {/* Academic fields are owned by the institution and are read-only in
-                  the Student Portal (enrollment, department, semester, CGPA,
-                  backlogs, attendance). Always rendered as read-only cards. */}
+              {/* Department / semester / institute stay read-only (set at
+                  registration). CGPA / backlogs / attendance are editable so the
+                  student maintains them once and every application reuses them. */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {[
                   { label: 'Department', value: profile.department },
                   { label: 'Current Semester', value: `Semester ${profile.semester}` },
-                  { label: 'Overall CGPA', value: profile.cgpa.toFixed(2) },
-                  { label: 'Live Backlogs', value: profile.backlogs ?? 0 },
-                  { label: 'Attendance %', value: `${profile.attendance ?? 0}%` },
                   { label: 'Institute', value: (profile as any).institute || 'PIET' },
                 ].map(({ label, value }) => (
                   <div key={label} className="p-4 bg-zinc-50 rounded-xl border border-zinc-100">
@@ -305,29 +327,60 @@ const Profile: React.FC = () => {
                     <p className="font-bold text-zinc-900">{value}</p>
                   </div>
                 ))}
+                {editing ? (
+                  <>
+                    <div>
+                      <Label className="text-xs text-zinc-500 mb-1 block">Overall CGPA</Label>
+                      <Input type="number" step="0.01" min="0" max="10" {...register('cgpa')} className="font-mono" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-zinc-500 mb-1 block">Live Backlogs</Label>
+                      <Input type="number" min="0" {...register('backlogs')} className="font-mono" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-zinc-500 mb-1 block">Attendance %</Label>
+                      <Input type="number" min="0" max="100" {...register('attendance')} className="font-mono" />
+                    </div>
+                  </>
+                ) : (
+                  [
+                    { label: 'Overall CGPA', value: (profile.cgpa ?? 0).toFixed(2) },
+                    { label: 'Live Backlogs', value: profile.backlogs ?? 0 },
+                    { label: 'Attendance %', value: `${profile.attendance ?? 0}%` },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="p-4 bg-zinc-50 rounded-xl border border-zinc-100">
+                      <p className="text-xs text-zinc-500 mb-1">{label}</p>
+                      <p className="font-bold text-zinc-900">{value}</p>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
-            {/* SPI Scores */}
-            {!editing && profile.spiScores && (
-              <>
-                <Separator />
-                <div>
-                  <h4 className="font-semibold text-zinc-900 mb-4">SPI Scores (Semester-wise)</h4>
-                  <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
-                    {([1,2,3,4,5,6,7,8] as const).map((sem) => {
-                      const score = profile.spiScores?.[`sem${sem}` as keyof typeof profile.spiScores];
-                      return (
-                        <div key={sem} className={`text-center p-3 rounded-xl border ${score ? 'bg-blue-50 border-blue-200' : 'bg-zinc-50 border-zinc-200'}`}>
-                          <p className="text-xs text-zinc-500 mb-1">Sem {sem}</p>
-                          <p className="font-bold text-zinc-900">{score ? score.toFixed(2) : '—'}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </>
-            )}
+            {/* SPI Scores — editable so they persist and pre-fill every application */}
+            <Separator />
+            <div>
+              <h4 className="font-semibold text-zinc-900 mb-4">SPI Scores (Semester-wise)</h4>
+              <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
+                {([1, 2, 3, 4, 5, 6, 7, 8] as const).map((sem) => {
+                  const score = profile.spiScores?.[`sem${sem}` as keyof typeof profile.spiScores];
+                  return (
+                    <div key={sem} className={`text-center p-3 rounded-xl border ${!editing && score ? 'bg-blue-50 border-blue-200' : 'bg-zinc-50 border-zinc-200'}`}>
+                      <p className="text-xs text-zinc-500 mb-1">Sem {sem}</p>
+                      {editing ? (
+                        <Input
+                          type="number" step="0.01" min="0" max="10" placeholder="—"
+                          {...register(`sem${sem}` as keyof FormValues)}
+                          className="h-8 text-center font-mono px-1"
+                        />
+                      ) : (
+                        <p className="font-bold text-zinc-900">{score ? score.toFixed(2) : '—'}</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </TabsContent>
 

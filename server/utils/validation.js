@@ -64,6 +64,47 @@ function validateProfilePatch(body) {
     if (raw.length > MAX.skillsCount) throw new ApiError(400, `You can list at most ${MAX.skillsCount} skills.`);
     out.skills = raw.map((s) => ensureMax(trim(String(s)), MAX.skill, 'Skill')).filter(Boolean);
   }
+
+  // --- Academic + personal details (synced from the application form) ---------
+  if (b.cgpa !== undefined) {
+    const n = Number(b.cgpa);
+    if (isNaN(n) || n < 0 || n > 10) throw new ApiError(400, 'CGPA must be between 0 and 10.');
+    out.cgpa = n;
+  }
+  if (b.backlogs !== undefined) {
+    const n = Number(b.backlogs);
+    if (isNaN(n) || n < 0) throw new ApiError(400, 'Backlogs cannot be negative.');
+    out.backlogs = Math.floor(n);
+  }
+  if (b.attendance !== undefined) {
+    const n = Number(b.attendance);
+    if (isNaN(n) || n < 0 || n > 100) throw new ApiError(400, 'Attendance must be between 0 and 100.');
+    out.attendance = n;
+  }
+  if (b.fatherName !== undefined) out.fatherName = ensureMax(trim(b.fatherName), MAX.name, "Father's name");
+  if (b.motherName !== undefined) out.motherName = ensureMax(trim(b.motherName), MAX.name, "Mother's name");
+  if (b.dateOfBirth !== undefined) out.dateOfBirth = ensureMax(trim(b.dateOfBirth), 40, 'Date of birth');
+  if (b.gender !== undefined) out.gender = ensureMax(trim(b.gender), 20, 'Gender');
+  if (b.languages !== undefined) {
+    const raw = Array.isArray(b.languages)
+      ? b.languages
+      : String(b.languages || '').split(',');
+    out.languages = raw
+      .map((l) => ensureMax(trim(String(l)), MAX.skill, 'Language'))
+      .filter(Boolean)
+      .slice(0, 20);
+  }
+  if (b.spiScores !== undefined && b.spiScores && typeof b.spiScores === 'object') {
+    const sp = {};
+    for (let i = 1; i <= 8; i++) {
+      const v = b.spiScores[`sem${i}`];
+      if (v === undefined || v === null || v === '') continue;
+      const n = Number(v);
+      if (isNaN(n) || n < 0 || n > 10) throw new ApiError(400, `SPI for Sem ${i} must be between 0 and 10.`);
+      sp[`sem${i}`] = n;
+    }
+    out.spiScores = sp;
+  }
   return out;
 }
 

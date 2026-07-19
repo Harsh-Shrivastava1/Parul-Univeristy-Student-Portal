@@ -51,6 +51,16 @@ function toProfile(user, student) {
     linkedIn: s.linkedIn || '',
     portfolio: s.portfolio || '',
     emergencyContact: s.emergencyContact || '',
+    // Academic + personal details. Persisted from the application form so the
+    // student fills them once and every future application pre-fills from here.
+    fatherName: s.fatherName || '',
+    motherName: s.motherName || '',
+    dateOfBirth: s.dateOfBirth || '',
+    gender: s.gender || '',
+    languages: Array.isArray(s.languages) ? s.languages : [],
+    backlogs: typeof s.backlogs === 'number' ? s.backlogs : 0,
+    attendance: typeof s.attendance === 'number' ? s.attendance : 0,
+    spiScores: s.spiScores && typeof s.spiScores === 'object' ? s.spiScores : {},
   };
 }
 

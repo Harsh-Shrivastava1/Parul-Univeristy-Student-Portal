@@ -11,8 +11,9 @@ import {
 } from 'lucide-react';
 import { internshipService } from '../services/internshipService';
 import { applicationService } from '../services/applicationService';
+import { profileService } from '../services/profileService';
 import { useAuth } from '../hooks/useAuth';
-import type { Internship } from '../types';
+import type { Internship, User as StudentUser } from '../types';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
@@ -127,7 +128,7 @@ const ta = 'p-3 border-zinc-200 bg-white focus:border-zinc-400 focus:ring-1 focu
 const ApplicationForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, login } = useAuth();
   const [internship, setInternship] = useState<Internship | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -148,7 +149,8 @@ const ApplicationForm: React.FC = () => {
         reset({
           date: today,
           instituteName: (user as any).institute ?? 'Parul Institute of Engineering & Technology',
-          departmentName: user.department ?? '',
+          // No default — the student must explicitly choose their department.
+          departmentName: '',
           degree: 'B.Tech',
           passingYear: '2026',
           position: data.postName,
@@ -169,6 +171,7 @@ const ApplicationForm: React.FC = () => {
           sem1: user.spiScores?.sem1, sem2: user.spiScores?.sem2,
           sem3: user.spiScores?.sem3, sem4: user.spiScores?.sem4,
           sem5: user.spiScores?.sem5, sem6: user.spiScores?.sem6,
+          sem7: user.spiScores?.sem7, sem8: user.spiScores?.sem8,
           declarationAccepted: false,
         });
       }
@@ -206,6 +209,31 @@ const ApplicationForm: React.FC = () => {
       };
       const app = await applicationService.submitApplication(internship.id, user.id, internship, formData);
 
+      // Persist the academic + personal details to the student profile so they
+      // are filled once and every future application pre-fills from here — no
+      // re-typing SPI etc. Non-blocking: a sync failure never fails the apply.
+      try {
+        const updated = await profileService.updateUserProfile(user.id, {
+          contact: data.contact,
+          address: data.presentAddress,
+          cgpa: Number(data.cgpa),
+          fatherName: data.fatherName,
+          motherName: data.motherName,
+          dateOfBirth: data.dateOfBirth,
+          gender: data.gender,
+          languages: (data.languagesKnown || '').split(',').map((s) => s.trim()).filter(Boolean),
+          backlogs: Number(data.backlogs),
+          attendance: Number(data.attendance),
+          spiScores: {
+            sem1: data.sem1, sem2: data.sem2, sem3: data.sem3, sem4: data.sem4,
+            sem5: data.sem5, sem6: data.sem6, sem7: data.sem7, sem8: data.sem8,
+          },
+        } as Partial<StudentUser>);
+        if (updated) login(updated);
+      } catch {
+        /* profile sync is best-effort */
+      }
+
       // The confirmation email/notification is sent server-side by the owning
       // backend when the application is created.
       setSubmittedAppId(app.id);
@@ -221,7 +249,7 @@ const ApplicationForm: React.FC = () => {
     if (!id || !user || !internship) return;
     reset({
       date: today, instituteName: (user as any).institute ?? 'Parul Institute of Engineering & Technology',
-      departmentName: user.department ?? '', degree: 'B.Tech', passingYear: '2026', position: internship.postName,
+      departmentName: '', degree: 'B.Tech', passingYear: '2026', position: internship.postName,
       fullName: user.name ?? '', enrollmentNumber: user.enrollmentNumber ?? '',
       contact: user.contact ?? '', email: user.email ?? '',
       presentAddress: user.address ?? '', declarationAccepted: false
@@ -274,7 +302,7 @@ const ApplicationForm: React.FC = () => {
   const displayDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
 
   return (
-    <div className="w-full pb-20">
+    <div className="w-full pb-28 md:pb-4">
 
       {/* ── Back ── */}
       <Button variant="ghost" type="button" onClick={() => navigate(`/internships/${internship.id}`)}
@@ -330,8 +358,8 @@ const ApplicationForm: React.FC = () => {
             <Field label="Institute Name" required error={errors.instituteName?.message}>
               <Input {...register('instituteName')} className={inp} />
             </Field>
-            <Field label="Department Name" required error={errors.departmentName?.message}>
-              <Input {...register('departmentName')} className={inp} />
+            <Field label="Department" required error={errors.departmentName?.message}>
+              <Input {...register('departmentName')} placeholder="Enter your department" className={inp} />
             </Field>
             <Field label="Degree" required error={errors.degree?.message}>
               <Input {...register('degree')} placeholder="B.Tech, BCA, etc." className={inp} />

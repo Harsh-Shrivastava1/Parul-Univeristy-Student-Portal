@@ -30,6 +30,20 @@ const studentSchema = new Schema(
     linkedIn: { type: String, default: '' },
     portfolio: { type: String, default: '' },
     emergencyContact: { type: String, default: '' },
+    // Academic + personal details — filled once via the application form and
+    // reused (pre-filled) on every future application.
+    fatherName: { type: String, default: '' },
+    motherName: { type: String, default: '' },
+    dateOfBirth: { type: String, default: '' },
+    gender: { type: String, default: '' },
+    languages: { type: [String], default: [] },
+    backlogs: { type: Number, default: 0 },
+    attendance: { type: Number, default: 0 },
+    // Nested path (not a subdocument) so Mongoose does not inject a stray _id.
+    spiScores: {
+      sem1: { type: Number }, sem2: { type: Number }, sem3: { type: Number }, sem4: { type: Number },
+      sem5: { type: Number }, sem6: { type: Number }, sem7: { type: Number }, sem8: { type: Number },
+    },
     createdAt: { type: String },
     updatedAt: { type: String },
   },
