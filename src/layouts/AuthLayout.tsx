@@ -50,7 +50,7 @@ const MODAL_CONTENT = {
             <li><span className="font-medium text-zinc-700">Hours:</span> Mon - Sat, 9:00 AM to 5:00 PM</li>
           </ul>
         </div>
-        <p>For urgent academic inquiries, please visit the Training and Placement Cell physically at the main campus.</p>
+        <p>For urgent academic inquiries, please visit the Technical Events Cell physically at the main campus.</p>
       </div>
     )
   }

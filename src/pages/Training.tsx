@@ -1,23 +1,40 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { applicationService } from '../services/applicationService';
+import { trainingService, type TrainingInfo } from '../services/trainingService';
+import { documentService } from '../services/documentService';
 import type { Application } from '../types';
-import { ArrowLeft, BookOpen, Clock, MapPin, User, Download, Upload } from 'lucide-react';
+import { ArrowLeft, BookOpen, Clock, MapPin, User, Download } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function Training() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [application, setApplication] = useState<Application | null>(null);
+  const [training, setTraining] = useState<TrainingInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (id) {
-      applicationService.getApplicationById(id).then(app => {
+      Promise.all([
+        applicationService.getApplicationById(id),
+        trainingService.getMyTraining(),
+      ]).then(([app, tr]) => {
         setApplication(app || null);
+        setTraining(tr);
         setLoading(false);
       });
     }
   }, [id]);
+
+  const handleDownloadAttendance = async () => {
+    if (!application) return;
+    try {
+      await documentService.download(application.id, 'attendance-form', `PU_Attendance_${application.id}.pdf`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Attendance form is not available yet.');
+    }
+  };
 
   if (loading) {
     return (
@@ -31,7 +48,7 @@ export default function Training() {
     return <div className="text-center p-8">Application not found</div>;
   }
 
-  if (!['Training', 'Training Completed', 'Internship Running', 'Completed'].includes(application.status)) {
+  if (!training) {
     return (
       <div className="text-center p-8">
         <p className="text-red-500 mb-4">Training module not yet available for this application.</p>
@@ -72,21 +89,21 @@ export default function Training() {
                   <User className="w-5 h-5 text-zinc-400 mt-0.5" />
                   <div>
                     <p className="text-sm font-medium text-zinc-900">Assigned Mentor</p>
-                    <p className="text-sm text-zinc-600">Mr. Sharma (IT Dept)</p>
+                    <p className="text-sm text-zinc-600">{training.mentorName || '—'}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <MapPin className="w-5 h-5 text-zinc-400 mt-0.5" />
                   <div>
                     <p className="text-sm font-medium text-zinc-900">Location</p>
-                    <p className="text-sm text-zinc-600">Training Room B, Main Campus</p>
+                    <p className="text-sm text-zinc-600">{training.reportingLocation || '—'}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <Clock className="w-5 h-5 text-zinc-400 mt-0.5" />
                   <div>
                     <p className="text-sm font-medium text-zinc-900">Reporting Time</p>
-                    <p className="text-sm text-zinc-600">09:00 AM - 05:00 PM</p>
+                    <p className="text-sm text-zinc-600">{training.reportingTime || '—'}</p>
                   </div>
                 </div>
               </div>
@@ -95,13 +112,12 @@ export default function Training() {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-zinc-900 border-b pb-2">Actions</h3>
               <div className="grid grid-cols-1 gap-3">
-                <button className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 rounded-lg text-sm font-medium text-zinc-700 transition-colors">
+                <button
+                  onClick={handleDownloadAttendance}
+                  className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 rounded-lg text-sm font-medium text-zinc-700 transition-colors"
+                >
                   <Download className="w-4 h-4" />
                   Download Attendance Form
-                </button>
-                <button className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 rounded-lg text-sm font-medium text-zinc-700 transition-colors">
-                  <Upload className="w-4 h-4" />
-                  Upload Required Documents
                 </button>
               </div>
             </div>

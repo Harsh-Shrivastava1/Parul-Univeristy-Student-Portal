@@ -3,9 +3,10 @@ import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { User, Mail, Phone, MapPin, Code2, Languages, Briefcase, Edit3, Save, X, Camera, Star, FileText } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Code2, Languages, Briefcase, Edit3, Save, X, Star, FileText } from 'lucide-react';
 import { profileService } from '../services/profileService';
 import { applicationService } from '../services/applicationService';
+import { documentService } from '../services/documentService';
 import { useAuth } from '../hooks/useAuth';
 import type { User as UserType, Application } from '../types';
 import { PageHeader } from '../components/shared/PageHeader';
@@ -17,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Skeleton } from '../components/ui/skeleton';
 import { Separator } from '../components/ui/separator';
+import ChangePasswordCard from '../components/ChangePasswordCard';
 import { toast } from 'sonner';
 
 const schema = z.object({
@@ -27,10 +29,6 @@ const schema = z.object({
   motherName: z.string().optional(),
   dateOfBirth: z.string().optional(),
   gender: z.string().optional(),
-  cgpa: z.coerce.number().min(0).max(10),
-  semester: z.coerce.number().min(1).max(8),
-  backlogs: z.coerce.number().min(0),
-  attendance: z.coerce.number().min(0).max(100),
   skills: z.string(),
   languages: z.string(),
 });
@@ -80,10 +78,6 @@ const Profile: React.FC = () => {
       motherName: data.motherName ?? '',
       dateOfBirth: data.dateOfBirth ?? '',
       gender: data.gender ?? '',
-      cgpa: data.cgpa ?? 0,
-      semester: data.semester,
-      backlogs: data.backlogs ?? 0,
-      attendance: data.attendance ?? 0,
       skills: (data.skills ?? []).join(', '),
       languages: (data.languages ?? []).join(', '),
     });
@@ -124,10 +118,6 @@ const Profile: React.FC = () => {
         motherName: profile.motherName ?? '',
         dateOfBirth: profile.dateOfBirth ?? '',
         gender: profile.gender ?? '',
-        cgpa: profile.cgpa,
-        semester: profile.semester,
-        backlogs: profile.backlogs ?? 0,
-        attendance: profile.attendance ?? 0,
         skills: (profile.skills ?? []).join(', '),
         languages: (profile.languages ?? []).join(', '),
       });
@@ -148,6 +138,19 @@ const Profile: React.FC = () => {
   }
 
   if (!profile) return null;
+
+  const attendanceApp = applications.find((app) =>
+    ['Training Starts', 'Training Completed', 'Returned to TEC Cell', 'Internship Starts', 'Internship Completed', 'Final Completion'].includes(app.status)
+  );
+
+  const handleDownloadAttendance = async () => {
+    if (!attendanceApp) return;
+    try {
+      await documentService.download(attendanceApp.id, 'attendance-form', `PU_Attendance_${attendanceApp.id}.pdf`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Attendance form is not available yet.');
+    }
+  };
 
   return (
     <div>
@@ -193,15 +196,6 @@ const Profile: React.FC = () => {
                 {getInitials(profile.name)}
               </AvatarFallback>
             </Avatar>
-            {editing && (
-              <button
-                type="button"
-                className="absolute bottom-0 right-0 w-7 h-7 bg-white border border-zinc-200 rounded-full flex items-center justify-center hover:bg-zinc-50"
-                onClick={() => toast.info('Photo upload coming soon!')}
-              >
-                <Camera size={14} className="text-zinc-600" />
-              </button>
-            )}
           </div>
           <div>
             <h2 className="text-2xl font-extrabold tracking-tight">{profile.name}</h2>
@@ -219,10 +213,7 @@ const Profile: React.FC = () => {
               <Button
                 variant="outline"
                 className="mt-3 gap-2 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800"
-                onClick={() => {
-                  toast.success('Downloading Attendance Form PDF...');
-                  // Implementation for actual PDF download could be hooked up here
-                }}
+                onClick={handleDownloadAttendance}
               >
                 <FileText size={16} />
                 Download Attendance Form PDF
@@ -297,37 +288,24 @@ const Profile: React.FC = () => {
           <div className="bg-white border border-zinc-200 rounded-2xl p-6 space-y-6">
             <div>
               <h3 className="font-semibold text-zinc-900 mb-4">Academic Information</h3>
-              {editing ? (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {[
-                    { label: 'Current Semester', key: 'semester' },
-                    { label: 'Overall CGPA', key: 'cgpa' },
-                    { label: 'Live Backlogs', key: 'backlogs' },
-                    { label: 'Attendance %', key: 'attendance' },
-                  ].map(({ label, key }) => (
-                    <div key={key}>
-                      <Label className="text-sm text-zinc-700 font-medium mb-1.5 block">{label}</Label>
-                      <Input {...register(key as any)} type="number" step="0.01" className="h-10 border-zinc-300" />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {[
-                    { label: 'Department', value: profile.department },
-                    { label: 'Current Semester', value: `Semester ${profile.semester}` },
-                    { label: 'Overall CGPA', value: profile.cgpa.toFixed(2) },
-                    { label: 'Live Backlogs', value: profile.backlogs ?? 0 },
-                    { label: 'Attendance %', value: `${profile.attendance ?? 0}%` },
-                    { label: 'Institute', value: (profile as any).institute || 'PIET' },
-                  ].map(({ label, value }) => (
-                    <div key={label} className="p-4 bg-zinc-50 rounded-xl border border-zinc-100">
-                      <p className="text-xs text-zinc-500 mb-1">{label}</p>
-                      <p className="font-bold text-zinc-900">{value}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {/* Academic fields are owned by the institution and are read-only in
+                  the Student Portal (enrollment, department, semester, CGPA,
+                  backlogs, attendance). Always rendered as read-only cards. */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {[
+                  { label: 'Department', value: profile.department },
+                  { label: 'Current Semester', value: `Semester ${profile.semester}` },
+                  { label: 'Overall CGPA', value: profile.cgpa.toFixed(2) },
+                  { label: 'Live Backlogs', value: profile.backlogs ?? 0 },
+                  { label: 'Attendance %', value: `${profile.attendance ?? 0}%` },
+                  { label: 'Institute', value: (profile as any).institute || 'PIET' },
+                ].map(({ label, value }) => (
+                  <div key={label} className="p-4 bg-zinc-50 rounded-xl border border-zinc-100">
+                    <p className="text-xs text-zinc-500 mb-1">{label}</p>
+                    <p className="font-bold text-zinc-900">{value}</p>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* SPI Scores */}
@@ -429,6 +407,9 @@ const Profile: React.FC = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Account security — self-service password change */}
+      <ChangePasswordCard />
     </div>
   );
 };

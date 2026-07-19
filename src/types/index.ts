@@ -144,19 +144,3 @@ export interface Notification {
   link?: string;
 }
 
-export interface DashboardMetrics {
-  availableInternships: number;
-  applicationsSubmitted: number;
-  shortlisted: number;
-  pendingReviews: number;
-  upcomingInterviews: UpcomingInterview[];
-}
-
-export interface UpcomingInterview {
-  internshipId: string;
-  postName: string;
-  department: string;
-  interviewDate: string;
-  interviewTime: string;
-  venue: string;
-}

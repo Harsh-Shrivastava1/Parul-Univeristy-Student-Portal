@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import { internshipService } from '../services/internshipService';
 import { applicationService } from '../services/applicationService';
-import { emailService } from '../services/emailService';
 import { useAuth } from '../hooks/useAuth';
 import type { Internship } from '../types';
 import { Button } from '../components/ui/button';
@@ -206,15 +205,9 @@ const ApplicationForm: React.FC = () => {
         digitalSignature: data.digitalSignature,
       };
       const app = await applicationService.submitApplication(internship.id, user.id, internship, formData);
-      
-      await emailService.sendApplicationConfirmation({
-        applicationId: app.id,
-        studentName: data.fullName,
-        studentEmail: data.email,
-        positionApplied: data.position,
-        department: data.departmentName,
-      });
 
+      // The confirmation email/notification is sent server-side by the owning
+      // backend when the application is created.
       setSubmittedAppId(app.id);
       toast.success('Application submitted successfully. A confirmation email has been sent to your registered email address.', { duration: 5000 });
     } catch {

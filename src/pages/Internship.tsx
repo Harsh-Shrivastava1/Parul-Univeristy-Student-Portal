@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { applicationService } from '../services/applicationService';
+import { trainingService, type TrainingInfo } from '../services/trainingService';
 import type { Application } from '../types';
 import { ArrowLeft, Briefcase, CheckCircle, Clock, Calendar, CheckSquare } from 'lucide-react';
 
@@ -8,12 +9,17 @@ export default function Internship() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [application, setApplication] = useState<Application | null>(null);
+  const [training, setTraining] = useState<TrainingInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (id) {
-      applicationService.getApplicationById(id).then(app => {
+      Promise.all([
+        applicationService.getApplicationById(id),
+        trainingService.getMyTraining(),
+      ]).then(([app, tr]) => {
         setApplication(app || null);
+        setTraining(tr);
         setLoading(false);
       });
     }
@@ -31,7 +37,7 @@ export default function Internship() {
     return <div className="text-center p-8">Application not found</div>;
   }
 
-  if (!['Internship Running', 'Completed'].includes(application.status)) {
+  if (!training) {
     return (
       <div className="text-center p-8">
         <p className="text-red-500 mb-4">Internship module not yet available for this application.</p>
@@ -50,7 +56,7 @@ export default function Internship() {
           <ArrowLeft className="w-5 h-5 mr-2" />
           Back to Applications
         </button>
-        {application.status === 'Completed' && (
+        {['Internship Completed', 'Final Completion'].includes(application.status) && (
           <span className="px-3 py-1 bg-green-100 text-green-700 font-medium rounded-full text-sm flex items-center">
             <CheckCircle className="w-4 h-4 mr-1" />
             Completed
@@ -92,7 +98,7 @@ export default function Internship() {
                   <Calendar className="w-5 h-5 text-zinc-400 mt-0.5" />
                   <div>
                     <p className="text-sm font-medium text-zinc-900">Start Date</p>
-                    <p className="text-sm text-zinc-600">To be decided by Mentor</p>
+                    <p className="text-sm text-zinc-600">{training.joiningDate || 'To be decided by Mentor'}</p>
                   </div>
                 </div>
               </div>

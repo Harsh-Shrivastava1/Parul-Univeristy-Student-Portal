@@ -8,6 +8,8 @@ import { DashboardLayout } from './layouts/DashboardLayout';
 
 // Lazy load pages
 const Login = React.lazy(() => import('./pages/Login'));
+const Register = React.lazy(() => import('./pages/Register'));
+const ForgotPassword = React.lazy(() => import('./pages/ForgotPassword'));
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const Internships = React.lazy(() => import('./pages/Internships'));
 const InternshipDetails = React.lazy(() => import('./pages/InternshipDetails'));
@@ -49,6 +51,8 @@ function App() {
               {/* Auth Routes */}
               <Route element={<AuthLayout />}>
                 <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
               </Route>
 
               {/* Protected Routes */}

@@ -1,6 +1,7 @@
 import React from 'react';
 import type { ApplicationStatus } from '../../types';
 
+// One entry per canonical ApplicationStatus value (matches the backend workflow).
 const config: Record<ApplicationStatus, { label: string; className: string }> = {
   Applied: {
     label: 'Applied',
@@ -9,10 +10,6 @@ const config: Record<ApplicationStatus, { label: string; className: string }> = 
   'Under Review': {
     label: 'Under Review',
     className: 'bg-blue-50 text-blue-700 border border-blue-200',
-  },
-  Shortlisted: {
-    label: 'Shortlisted',
-    className: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
   },
   'Interview Scheduled': {
     label: 'Interview Scheduled',
@@ -24,26 +21,38 @@ const config: Record<ApplicationStatus, { label: string; className: string }> = 
   },
   Selected: {
     label: 'Selected',
-    className: 'bg-green-50 text-green-700 border border-green-200',
+    className: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
   },
   'Assigned to Respective Cell': {
     label: 'Assigned to Cell',
     className: 'bg-teal-50 text-teal-700 border border-teal-200',
   },
-  Training: {
-    label: 'Training',
+  'Training Assigned': {
+    label: 'Training Assigned',
+    className: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
+  },
+  'Training Starts': {
+    label: 'Training Starts',
     className: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
   },
   'Training Completed': {
     label: 'Training Completed',
     className: 'bg-indigo-100 text-indigo-800 border border-indigo-300',
   },
-  'Internship Running': {
-    label: 'Internship Running',
+  'Returned to TEC Cell': {
+    label: 'Returned to TEC Cell',
+    className: 'bg-amber-50 text-amber-700 border border-amber-200',
+  },
+  'Internship Starts': {
+    label: 'Internship Starts',
     className: 'bg-cyan-50 text-cyan-700 border border-cyan-200',
   },
-  Completed: {
-    label: 'Completed',
+  'Internship Completed': {
+    label: 'Internship Completed',
+    className: 'bg-green-100 text-green-800 border border-green-300',
+  },
+  'Final Completion': {
+    label: 'Final Completion',
     className: 'bg-green-100 text-green-800 border border-green-300',
   },
   Rejected: {

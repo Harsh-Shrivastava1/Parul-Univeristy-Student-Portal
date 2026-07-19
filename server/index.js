@@ -1,28 +1,39 @@
 const express = require('express');
+const helmet = require('helmet');
 const cors = require('cors');
-require('dotenv').config();
+const cookieParser = require('cookie-parser');
 
+const { env } = require('./config/env');
 const connectDB = require('./config/db');
+const apiRoutes = require('./routes');
 const errorHandler = require('./middleware/errorHandler');
+const { verifyEmailTransport } = require('./services/email/mailer');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+
+// Correct client IPs when behind a reverse proxy (needed for rate limiting).
+app.set('trust proxy', 1);
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
-app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176', 'http://localhost:3000'],
-  credentials: true,
-}));
-app.use(express.json());
+// Security headers: X-Frame-Options, X-Content-Type-Options, Referrer-Policy,
+// HSTS (prod), etc. (JSON API — no CSP needed for HTML it does not serve.)
+app.use(helmet());
+app.use(
+  cors({
+    origin: env.frontendOrigins,
+    credentials: true,
+  })
+);
+app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
-// Future endpoints will be added here
-
+app.use('/api', apiRoutes);
 
 // Health check
-app.get('/api/health', (req, res) => {
-  res.json({ success: true, message: 'Parul Internship API is running', db: 'parul_internship_system' });
+app.get('/api/health', (_req, res) => {
+  res.json({ success: true, message: 'Parul Student Portal API is running', db: env.mongoDbName });
 });
 
 // 404 handler
@@ -30,16 +41,23 @@ app.use((req, res) => {
   res.status(404).json({ success: false, error: `Route not found: ${req.method} ${req.path}` });
 });
 
-// Central error handler
+// Central error handler (last)
 app.use(errorHandler);
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 const start = async () => {
-  // await connectDB();
-  // await seedDatabase();
-  app.listen(PORT, () => {
-    console.log(`🚀  Server running on http://localhost:${PORT}`);
-    console.log(`📡  API base: http://localhost:${PORT}/api`);
+  try {
+    await connectDB();
+  } catch (err) {
+    console.error('❌  Failed to connect to MongoDB:', err.message);
+    process.exit(1);
+  }
+  // Non-fatal: surface SMTP status at startup. Email is graceful/optional, so
+  // a failed verification never aborts the boot (server keeps serving).
+  verifyEmailTransport().catch(() => {});
+  app.listen(env.port, () => {
+    console.log(`🚀  Student Portal API on http://localhost:${env.port}`);
+    console.log(`📡  API base: http://localhost:${env.port}/api`);
   });
 };
 

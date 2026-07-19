@@ -1,50 +1,41 @@
-import { db, delay } from '../mock/db';
-import type { Application, ApplicationFormData, ApplicationStatus } from '../types';
+import type { Application, ApplicationFormData } from '../types';
+import { studentApi, tecApi } from '../lib/apiClient';
 
+/**
+ * Thin client for applications.
+ *
+ * WRITES go to the TEC Cell backend (tecApi → VITE_TEC_API_URL), which OWNS the
+ * applications collection and performs all validation, duplicate checks, audit
+ * logging, notifications and workflow status changes. The Student Portal never
+ * writes MongoDB directly.
+ *
+ * READS are served by the Student Portal backend acting as a read gateway over
+ * the shared collection (cross-domain reads are permitted). Identity comes from
+ * the auth cookie; the userId argument is kept only for call-site compatibility.
+ */
 export const applicationService = {
-  getApplications: async (userId: string): Promise<Application[]> => {
-    await delay();
-    return db.applications.filter(a => a.userId === userId);
+  getApplications: async (_userId: string): Promise<Application[]> => {
+    return studentApi.get<Application[]>('/me/applications');
   },
 
   getApplicationById: async (id: string): Promise<Application | undefined> => {
-    await delay();
-    return db.applications.find(a => a.id === id);
+    try {
+      return await studentApi.get<Application>(`/applications/${id}`);
+    } catch {
+      return undefined;
+    }
   },
 
   submitApplication: async (
     internshipId: string,
-    userId: string,
-    internship: Application['internship'],
-    formData: ApplicationFormData,
+    _userId: string,
+    _internship: Application['internship'],
+    formData: ApplicationFormData
   ): Promise<Application> => {
-    await delay();
-    const newApp: Application = {
-      id: `app_${Date.now()}`,
-      internshipId,
-      internship,
-      userId,
-      appliedDate: new Date().toISOString(),
-      lastUpdated: new Date().toISOString(),
-      status: 'Applied' as ApplicationStatus,
-      formData,
-      timeline: [
-        {
-          status: 'Applied' as ApplicationStatus,
-          timestamp: new Date().toISOString(),
-          notes: 'Application submitted successfully.'
-        }
-      ]
-    };
-    await db.addApplication(newApp);
-    return newApp;
+    return tecApi.post<Application>('/applications', { advertisementId: internshipId, formData });
   },
 
   withdrawApplication: async (appId: string): Promise<void> => {
-    await delay();
-    const index = db.applications.findIndex(a => a.id === appId);
-    if (index >= 0) {
-      db.applications.splice(index, 1);
-    }
+    await tecApi.del<void>(`/applications/${appId}`);
   },
 };

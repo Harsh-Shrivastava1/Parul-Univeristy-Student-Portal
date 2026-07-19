@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,10 +19,9 @@ import {
 import { Loader2, Eye, EyeOff, AlertCircle, Lock, User as UserIcon, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-// DEV ONLY - LOGIN BYPASS
 const loginSchema = z.object({
-  enrollmentNumber: z.string().optional(),
-  password: z.string().optional(),
+  enrollmentNumber: z.string().min(1, 'Enrollment number is required'),
+  password: z.string().min(1, 'Password is required'),
   rememberMe: z.boolean().default(false).optional(),
 });
 
@@ -106,9 +105,9 @@ const Login: React.FC = () => {
               <FormItem>
                 <div className="flex items-center justify-between">
                   <FormLabel className="text-zinc-700 font-semibold text-xs uppercase tracking-wider">Password</FormLabel>
-                  <a href="#" className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+                  <Link to="/forgot-password" className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors">
                     Forgot password?
-                  </a>
+                  </Link>
                 </div>
                 <FormControl>
                   <div className="relative group">
@@ -188,6 +187,14 @@ const Login: React.FC = () => {
               </span>
             )}
           </Button>
+
+          {/* Create account link */}
+          <p className="text-center text-sm text-zinc-500 font-medium pt-1">
+            Don't have an account?{' '}
+            <Link to="/register" className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+              Create Account
+            </Link>
+          </p>
         </form>
       </Form>
 

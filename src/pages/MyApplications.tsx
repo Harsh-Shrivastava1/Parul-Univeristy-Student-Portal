@@ -5,7 +5,7 @@ import { FileText, Eye, Trash2, Download, Briefcase, CheckCircle, Clock, Loader2
 import { applicationService } from '../services/applicationService';
 import { useAuth } from '../hooks/useAuth';
 import type { Application } from '../types';
-import { generateApplicationPDF } from '../utils/generatePDF';
+import { documentService } from '../services/documentService';
 import { PageHeader } from '../components/shared/PageHeader';
 import { EmptyState } from '../components/shared/EmptyState';
 import { StatusBadge } from '../components/shared/StatusBadge';
@@ -49,10 +49,10 @@ const MyApplications: React.FC = () => {
   const handleDownloadPDF = async (app: Application) => {
     setDownloadingId(app.id);
     try {
-      await generateApplicationPDF(app);
+      await documentService.download(app.id, 'application-pdf', `PU_Application_${app.id}.pdf`);
       toast.success(`PDF downloaded: PU_Application_${app.id}.pdf`);
     } catch (e) {
-      toast.error('PDF generation failed. Please try again.');
+      toast.error(e instanceof Error ? e.message : 'Download failed. Please try again.');
     } finally {
       setDownloadingId(null);
     }
@@ -79,8 +79,8 @@ const MyApplications: React.FC = () => {
   const metrics = {
     total: applications.length,
     pending: applications.filter((a) => a.status === 'Applied' || a.status === 'Under Review').length,
-    shortlisted: applications.filter((a) => a.status === 'Shortlisted').length,
-    completed: applications.filter((a) => a.status === 'Completed' || a.status === 'Training').length,
+    shortlisted: applications.filter((a) => ['Interview Scheduled', 'Interview Completed', 'Selected'].includes(a.status)).length,
+    completed: applications.filter((a) => ['Training Completed', 'Internship Completed', 'Final Completion'].includes(a.status)).length,
   };
 
   return (

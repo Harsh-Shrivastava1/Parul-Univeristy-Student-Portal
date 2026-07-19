@@ -1,73 +1,43 @@
-# React + TypeScript + Vite
+# Parul University — Student Internship Portal
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The student-facing application of the four-portal Internship Management System
+(Student · Coordinator · TEC Cell · Admin), all sharing one MongoDB database
+(`parul_internship_system`).
 
-Currently, two official plugins are available:
+Students self-register, browse and apply for internship advertisements, track
+application status, view training, manage their personal profile, and download
+generated documents.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Frontend:** Vite + React 19 + TypeScript (`src/`)
+- **Backend:** Node + Express + Mongoose (`server/`)
+- **Auth:** JWT in httpOnly cookies
 
-## React Compiler
+## Status
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+**Feature-complete and frozen.** No further feature development — only bug
+fixes, dependency updates, and maintenance.
 
-## Expanding the ESLint configuration
+## Quick start
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
 ```
+# Backend
+cd server && npm install && cp .env.example .env   # set MONGODB_URI + JWT secrets
+npm run dev                                         # http://localhost:5000
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Frontend
+cd .. && npm install && cp .env.example .env        # set VITE_TEC_API_URL
+npm run dev                                          # http://localhost:5173
 ```
+The TEC backend must also run (default `:4000`) for apply/withdraw/documents,
+with its `STUDENT_JWT_ACCESS_SECRET` equal to this backend's `JWT_ACCESS_SECRET`.
+
+## Documentation
+
+| Doc | Contents |
+|---|---|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Overview, responsibilities, ownership, flows, folder structure, deployment |
+| [docs/API.md](docs/API.md) | Every endpoint: method, route, auth, owner, request/response, errors |
+| [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) | Every environment variable |
+| [docs/DATABASE.md](docs/DATABASE.md) | Collections, indexes, relationships, transactions, event sync |
+| [docs/SECURITY.md](docs/SECURITY.md) | Auth, authorization, JWT, cookies, rate limiting, validation, headers, audit, residual risks |
+| [docs/MAINTENANCE.md](docs/MAINTENANCE.md) | Deferred work, known limitations, technical debt, roadmap |

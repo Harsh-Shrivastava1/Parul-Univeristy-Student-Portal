@@ -125,7 +125,7 @@ const Dashboard: React.FC = () => {
   const metrics = {
     availableInternships: allInternshipsCount,
     applicationsSubmitted: applications.length,
-    shortlisted: applications.filter((a) => a.status === 'Shortlisted').length,
+    shortlisted: applications.filter((a) => ['Interview Scheduled', 'Interview Completed', 'Selected'].includes(a.status)).length,
     pendingReviews: applications.filter((a) => a.status === 'Under Review' || a.status === 'Applied').length,
     upcomingInterviews: applications
       .filter((a) => a.status === 'Interview Scheduled' && a.internship?.interviewDate)
