@@ -64,12 +64,13 @@ export const AuthLayout: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen h-screen overflow-hidden w-full flex bg-white font-sans selection:bg-red-500/30 relative">
+    <div className="min-h-screen w-full flex bg-white font-sans selection:bg-red-500/30 relative">
 
       {/* Light subtle background effects removed for uniform color */}
 
-      {/* Left Section: Premium Branding */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col justify-center items-center relative z-10 p-12">
+      {/* Left Section: Premium Branding (sticky so it stays in view while the
+          form column scrolls on tall pages like Register) */}
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-center items-center relative z-10 p-12 lg:sticky lg:top-0 lg:h-screen lg:self-start">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -112,19 +113,22 @@ export const AuthLayout: React.FC = () => {
         </motion.div>
       </div>
 
-      {/* Right Section: Auth Form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center px-6 relative z-10">
+      {/* Right Section: Auth Form — scrolls naturally when the form is taller
+          than the viewport (e.g. Register); short forms stay vertically centered
+          via my-auto. */}
+      <div className="w-full lg:w-1/2 flex flex-col items-center px-6 py-8 relative z-10 min-h-screen">
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
-          className="w-full max-w-[420px]"
+          className="w-full max-w-[420px] my-auto"
         >
           <Outlet />
         </motion.div>
 
-        {/* Footer */}
-        <div className="absolute bottom-6 left-0 right-0 lg:left-auto lg:w-1/2 hidden lg:flex justify-center z-10 px-4">
+        {/* Footer — in normal flow below the card, so it can never overlap the
+            form content; sits at the bottom edge when the form is short. */}
+        <div className="hidden lg:flex justify-center z-10 px-4 pt-8 shrink-0 w-full">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

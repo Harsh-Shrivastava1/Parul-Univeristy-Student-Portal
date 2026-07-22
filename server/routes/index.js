@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const authRoutes = require('./authRoutes');
 const departmentRoutes = require('./departmentRoutes');
+const instituteRoutes = require('./instituteRoutes');
 const meRoutes = require('./meRoutes');
 const advertisementRoutes = require('./advertisementRoutes');
 const applicationRoutes = require('./applicationRoutes');
@@ -15,6 +16,7 @@ router.use('/me', meRoutes);
 // Read-only over shared collections owned by sibling portals
 // (Admin: departments · TEC: advertisements/applications).
 router.use('/departments', departmentRoutes);
+router.use('/institutes', instituteRoutes);
 router.use('/advertisements', advertisementRoutes);
 router.use('/applications', applicationRoutes);
 

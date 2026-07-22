@@ -4,6 +4,8 @@ import { api, setAccessToken } from '../lib/apiClient';
 export interface RegisterPayload {
   fullName: string;
   enrollmentNumber: string;
+  /** Institute code (e.g. PIET) — locked after signup, Admin-only edit. */
+  institute: string;
   department: string;
   semester: number;
   email: string;

@@ -148,9 +148,9 @@ const ApplicationForm: React.FC = () => {
       if (data && user) {
         reset({
           date: today,
-          instituteName: (user as any).institute ?? 'Parul Institute of Engineering & Technology',
-          // No default — the student must explicitly choose their department.
-          departmentName: '',
+          instituteName: (user as any).institute || 'Parul University',
+          // Locked at signup — auto-filled from the profile, not editable here.
+          departmentName: user.department ?? '',
           degree: 'B.Tech',
           passingYear: '2026',
           position: data.postName,
@@ -248,8 +248,8 @@ const ApplicationForm: React.FC = () => {
   const handleReset = () => {
     if (!id || !user || !internship) return;
     reset({
-      date: today, instituteName: (user as any).institute ?? 'Parul Institute of Engineering & Technology',
-      departmentName: '', degree: 'B.Tech', passingYear: '2026', position: internship.postName,
+      date: today, instituteName: (user as any).institute || 'Parul University',
+      departmentName: user.department ?? '', degree: 'B.Tech', passingYear: '2026', position: internship.postName,
       fullName: user.name ?? '', enrollmentNumber: user.enrollmentNumber ?? '',
       contact: user.contact ?? '', email: user.email ?? '',
       presentAddress: user.address ?? '', declarationAccepted: false
@@ -358,8 +358,8 @@ const ApplicationForm: React.FC = () => {
             <Field label="Institute Name" required error={errors.instituteName?.message}>
               <Input {...register('instituteName')} className={inp} />
             </Field>
-            <Field label="Department" required error={errors.departmentName?.message}>
-              <Input {...register('departmentName')} placeholder="Enter your department" className={inp} />
+            <Field label="Department" required hint="Set at signup — contact Admin to change">
+              <Input {...register('departmentName')} readOnly className={`${inp} bg-zinc-50 text-zinc-500 cursor-default`} />
             </Field>
             <Field label="Degree" required error={errors.degree?.message}>
               <Input {...register('degree')} placeholder="B.Tech, BCA, etc." className={inp} />

@@ -20,6 +20,7 @@ const studentSchema = new Schema(
     // Unique at the DB level — the authoritative guard against duplicate
     // enrollment registration (app-level checks alone are racy). Immutable.
     enrollmentNumber: { type: String, required: true, unique: true, index: true },
+    institute: { type: String, default: '' }, // immutable after registration (Admin-only edit)
     department: { type: String }, // immutable after registration
     semester: { type: Number }, // immutable after registration
     email: { type: String, index: true },

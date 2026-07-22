@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { useAuth } from '../hooks/useAuth';
 import { authService } from '../services/authService';
-import { departmentService, type DepartmentOption } from '../services/departmentService';
+import { instituteService, type InstituteOption } from '../services/departmentService';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import {
@@ -39,21 +39,6 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-// Fallback list used only if the departments API is unavailable; the live
-// Admin-owned list from GET /departments takes over when it loads.
-const FALLBACK_DEPARTMENTS: DepartmentOption[] = [
-  'Computer Science',
-  'Information Technology',
-  'Electronics & Communication',
-  'Electrical Engineering',
-  'Mechanical Engineering',
-  'Civil Engineering',
-  'Chemical Engineering',
-  'Computer Applications',
-  'Business Administration',
-  'Data Science',
-].map((name) => ({ id: name, name }));
-
 const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8];
 
 const registerSchema = z
@@ -63,6 +48,7 @@ const registerSchema = z
       .string()
       .min(4, 'Enter a valid enrollment number')
       .regex(/^[A-Za-z0-9]+$/, 'Enrollment number must be alphanumeric'),
+    institute: z.string().min(1, 'Select your institute'),
     department: z.string().min(1, 'Select your department'),
     semester: z.string().min(1, 'Select your semester'),
     email: z.string().email('Enter a valid email address'),
@@ -96,18 +82,19 @@ const Register: React.FC = () => {
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [departments, setDepartments] = useState<DepartmentOption[]>(FALLBACK_DEPARTMENTS);
+  const [institutes, setInstitutes] = useState<InstituteOption[]>([]);
 
-  // Populate the Department dropdown from the backend (Admin-owned list).
+  // Institute → academic-department master data (Admin-owned, from the college
+  // sheet). Drives the cascading signup dropdowns.
   useEffect(() => {
     let active = true;
-    departmentService
-      .getDepartments()
+    instituteService
+      .getInstitutes()
       .then((list) => {
-        if (active && list.length) setDepartments(list);
+        if (active && list.length) setInstitutes(list);
       })
       .catch(() => {
-        /* keep fallback list */
+        /* dropdown stays empty; backend validates anyway */
       });
     return () => {
       active = false;
@@ -119,6 +106,7 @@ const Register: React.FC = () => {
     defaultValues: {
       fullName: '',
       enrollmentNumber: '',
+      institute: '',
       department: '',
       semester: '',
       email: '',
@@ -127,6 +115,10 @@ const Register: React.FC = () => {
     },
   });
 
+  // Departments belong to the selected institute; changing institute resets it.
+  const selectedInstitute = form.watch('institute');
+  const instituteDepts = institutes.find((i) => i.code === selectedInstitute)?.departments ?? [];
+
   const onSubmit = async (data: RegisterFormValues) => {
     setIsLoading(true);
     setRegisterError(null);
@@ -134,6 +126,7 @@ const Register: React.FC = () => {
       const user = await authService.register({
         fullName: data.fullName,
         enrollmentNumber: data.enrollmentNumber,
+        institute: data.institute,
         department: data.department,
         semester: Number(data.semester),
         email: data.email,
@@ -209,15 +202,25 @@ const Register: React.FC = () => {
             )}
           />
 
-          {/* Department + Semester */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Institute + Department (cascading, locked after signup).
+              Full-width stacked so long institute/department names stay fully
+              visible in the select triggers. */}
+          <div className="grid grid-cols-1 gap-5">
             <FormField
               control={form.control}
-              name="department"
+              name="institute"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className={labelClass}>Department</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value} disabled={isLoading}>
+                  <FormLabel className={labelClass}>Institute</FormLabel>
+                  <Select
+                    onValueChange={(v) => {
+                      field.onChange(v);
+                      // departments belong to the institute — reset on change
+                      form.setValue('department', '');
+                    }}
+                    value={field.value}
+                    disabled={isLoading}
+                  >
                     <FormControl>
                       <div className="relative group">
                         <div className={iconWrap}>
@@ -228,10 +231,10 @@ const Register: React.FC = () => {
                         </SelectTrigger>
                       </div>
                     </FormControl>
-                    <SelectContent className="rounded-xl">
-                      {departments.map((d) => (
-                        <SelectItem key={d.id} value={d.name}>
-                          {d.name}
+                    <SelectContent className="rounded-xl max-h-64">
+                      {institutes.map((i) => (
+                        <SelectItem key={i.code} value={i.code}>
+                          {i.code}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -241,6 +244,42 @@ const Register: React.FC = () => {
               )}
             />
 
+            <FormField
+              control={form.control}
+              name="department"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className={labelClass}>Department</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={isLoading || !selectedInstitute}>
+                    <FormControl>
+                      <div className="relative group">
+                        <div className={iconWrap}>
+                          <Building2 size={18} />
+                        </div>
+                        <SelectTrigger className={triggerClass}>
+                          <SelectValue placeholder={selectedInstitute ? 'Select' : 'Institute first'} />
+                        </SelectTrigger>
+                      </div>
+                    </FormControl>
+                    <SelectContent className="rounded-xl max-h-64">
+                      {instituteDepts.map((d) => (
+                        <SelectItem key={d} value={d}>
+                          {d}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          <p className="text-[11px] text-amber-600 -mt-2">
+            ⚠ Institute &amp; department are locked after signup — only the Admin can change them later.
+          </p>
+
+          {/* Semester */}
+          <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="semester"

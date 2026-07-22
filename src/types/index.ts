@@ -21,6 +21,8 @@ export interface User {
   name: string;
   enrollmentNumber: string;
   email: string;
+  /** Institute code (e.g. PIET) — locked at signup, Admin-only edit. */
+  institute?: string;
   department: string;
   semester: number;
   contact: string;

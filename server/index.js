@@ -55,10 +55,36 @@ const start = async () => {
   // Non-fatal: surface SMTP status at startup. Email is graceful/optional, so
   // a failed verification never aborts the boot (server keeps serving).
   verifyEmailTransport().catch(() => {});
-  app.listen(env.port, () => {
+  const server = app.listen(env.port, () => {
     console.log(`🚀  Student Portal API on http://localhost:${env.port}`);
     console.log(`📡  API base: http://localhost:${env.port}/api`);
   });
+
+  // Graceful shutdown: stop accepting new connections, drain in-flight requests,
+  // close the DB pool, then exit. PM2 sends SIGINT on reload — this is what makes
+  // zero-downtime `pm2 reload` work in production.
+  const shutdown = (signal) => {
+    console.log(`⏻  Received ${signal}, shutting down gracefully…`);
+    server.close(() => {
+      const mongoose = require('mongoose');
+      mongoose.connection
+        .close(false)
+        .catch(() => {})
+        .finally(() => process.exit(0));
+    });
+    // Failsafe: force-exit if connections refuse to drain.
+    setTimeout(() => process.exit(1), 10_000).unref();
+  };
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
 };
+
+// Never crash the process silently on a stray async error — log and keep serving.
+process.on('unhandledRejection', (reason) => {
+  console.error('unhandledRejection:', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('uncaughtException:', err);
+});
 
 start();

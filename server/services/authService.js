@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const Student = require('../models/Student');
+const Institute = require('../models/Institute');
 const ApiError = require('../utils/ApiError');
 const { hashPassword, comparePassword } = require('../utils/auth');
 const { MAX, isEmail } = require('../utils/validation');
@@ -42,6 +43,7 @@ function toProfile(user, student) {
     name: user.name,
     email: user.email,
     enrollmentNumber: s.enrollmentNumber || '',
+    institute: s.institute || '',
     department: s.department || '',
     semester: s.semester || 0,
     contact: s.contactNumber || '',
@@ -72,6 +74,8 @@ function validateRegister(p) {
   const enrollment = String(p.enrollmentNumber || '').trim();
   if (!/^[A-Za-z0-9]+$/.test(enrollment)) return 'Enter a valid alphanumeric enrollment number.';
   if (enrollment.length > 40) return 'Enrollment number is too long.';
+  if (!p.institute) return 'Please select your institute.';
+  if (String(p.institute).length > MAX.name) return 'Invalid institute.';
   if (!p.department) return 'Please select your department.';
   if (String(p.department).length > MAX.name) return 'Invalid department.';
   const sem = Number(p.semester);
@@ -143,6 +147,15 @@ async function register(payload) {
   if (emailTaken) throw new ApiError(409, 'An account with this email is already registered.');
   if (enrollTaken) throw new ApiError(409, 'An account with this enrollment number already exists.');
 
+  // Institute + department must be a valid pair from the Admin-owned master
+  // data. They are LOCKED after signup (only an Admin can change them later).
+  const instituteCode = String(payload.institute).trim();
+  const deptName = String(payload.department).trim();
+  const institute = await Institute.findOne({ code: instituteCode }).lean();
+  if (!institute) throw new ApiError(400, 'Please select a valid institute.');
+  const deptOk = (institute.departments || []).some((d) => d && d.name === deptName);
+  if (!deptOk) throw new ApiError(400, 'Selected department does not belong to the selected institute.');
+
   const now = new Date().toISOString();
   const passwordHash = await hashPassword(String(payload.password));
   const studentDocId = genId('ST');
@@ -156,7 +169,8 @@ async function register(payload) {
     studentName: fullName,
     name: fullName,
     enrollmentNumber,
-    department: payload.department,
+    institute: instituteCode,
+    department: deptName,
     semester: Number(payload.semester),
     email,
     contactNumber: '',

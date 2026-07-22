@@ -1,0 +1,42 @@
+# Render Blueprint — Student Portal backend
+# Deploy: Render Dashboard → New → Blueprint → select this repo.
+# Secrets (sync: false) are prompted in the dashboard — never committed.
+services:
+  - type: web
+    name: student-backend
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm ci --omit=dev
+    startCommand: node index.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: COOKIE_SAMESITE
+        value: none # Vercel frontend ↔ Render backend are cross-site
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB_NAME
+        value: internship_management
+      - key: FRONTEND_ORIGINS
+        sync: false # https://<student-frontend>.vercel.app
+      - key: JWT_ACCESS_SECRET
+        sync: false # generate once; TEC + Coordinator STUDENT_JWT_ACCESS_SECRET must match
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
