@@ -12,7 +12,6 @@ import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 
-const DEPARTMENTS = ['All', 'IT Cell', 'Research Cell', 'Marketing Cell', 'HR Cell', 'Electronics Cell', 'Media Cell', 'Placement Cell', 'Cultural Cell'];
 const DURATIONS = ['All', '1 Month', '2 Months', '3 Months', '4 Months', '6 Months'];
 const STATUSES = ['All', 'Open', 'Closed'];
 
@@ -32,7 +31,6 @@ const InternshipCard: React.FC<{ internship: Internship; onClick: () => void }> 
         </div>
         <div>
           <h3 className="font-semibold text-zinc-900 text-sm leading-tight">{internship.postName}</h3>
-          <p className="text-xs text-zinc-500 mt-0.5">{internship.department}</p>
         </div>
       </div>
       <Badge
@@ -49,7 +47,7 @@ const InternshipCard: React.FC<{ internship: Internship; onClick: () => void }> 
 
     {/* Info chips */}
     <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-zinc-500 mb-4">
-      <span className="font-semibold text-blue-700">{internship.stipend}</span>
+      <span className="font-semibold text-blue-700">₹{internship.stipend}</span>
       <span>·</span>
       <span>{internship.duration}</span>
     </div>
@@ -92,7 +90,6 @@ const Internships: React.FC = () => {
   const [internships, setInternships] = useState<Internship[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [department, setDepartment] = useState('All');
   const [duration, setDuration] = useState('All');
   const [status, setStatus] = useState('All');
   const [showFilters, setShowFilters] = useState(false);
@@ -122,17 +119,15 @@ const Internships: React.FC = () => {
       const matchSearch =
         !q ||
         i.postName.toLowerCase().includes(q) ||
-        i.department.toLowerCase().includes(q) ||
         i.skills.some((s) => s.toLowerCase().includes(q));
-      const matchDept = department === 'All' || i.department === department;
       const matchDuration = duration === 'All' || i.duration === duration;
       const matchStatus = status === 'All' || i.status === status;
-      return matchSearch && matchDept && matchDuration && matchStatus;
+      return matchSearch && matchDuration && matchStatus;
     });
-  }, [internships, search, department, duration, status]);
+  }, [internships, search, duration, status]);
 
-  const hasFilters = search || department !== 'All' || duration !== 'All' || status !== 'All';
-  const clearFilters = () => { setSearch(''); setDepartment('All'); setDuration('All'); setStatus('All'); };
+  const hasFilters = search || duration !== 'All' || status !== 'All';
+  const clearFilters = () => { setSearch(''); setDuration('All'); setStatus('All'); };
 
   const openCount = internships.filter((i) => i.status === 'Open').length;
 
@@ -140,7 +135,7 @@ const Internships: React.FC = () => {
     <div>
       <PageHeader
         title="Available Internships"
-        subtitle={`${openCount} open positions across ${[...new Set(internships.map((i) => i.department))].length} departments`}
+        subtitle={`${openCount} open position${openCount !== 1 ? 's' : ''} available`}
         breadcrumbs={[{ label: 'Dashboard', href: '/' }, { label: 'Internships' }]}
       />
 
@@ -152,7 +147,7 @@ const Internships: React.FC = () => {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by position, department, or skill..."
+              placeholder="Search by position or skill..."
               className="pl-9 h-11 border-zinc-300"
             />
             {search && (
@@ -179,14 +174,6 @@ const Internships: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-wrap gap-3 p-4 bg-zinc-50 rounded-xl border border-zinc-200"
           >
-            <Select value={department} onValueChange={setDepartment}>
-              <SelectTrigger className="w-48 h-9 bg-white border-zinc-300 text-sm">
-                <SelectValue placeholder="Department" />
-              </SelectTrigger>
-              <SelectContent>
-                {DEPARTMENTS.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-              </SelectContent>
-            </Select>
             <Select value={duration} onValueChange={setDuration}>
               <SelectTrigger className="w-40 h-9 bg-white border-zinc-300 text-sm">
                 <SelectValue placeholder="Duration" />

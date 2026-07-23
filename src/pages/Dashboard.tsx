@@ -132,7 +132,6 @@ const Dashboard: React.FC = () => {
       .map((a) => ({
         internshipId: a.internshipId,
         postName: a.internship.postName,
-        department: a.internship.department,
         interviewDate: a.internship.interviewDate,
         interviewTime: a.internship.interviewTime,
         venue: a.internship.venue,
@@ -243,9 +242,8 @@ const Dashboard: React.FC = () => {
                         {internship.status}
                       </Badge>
                     </div>
-                    <p className="text-xs text-zinc-500 mt-0.5">{internship.department}</p>
                     <div className="flex flex-wrap items-center gap-y-2 gap-x-3 mt-3 text-xs text-zinc-500">
-                      <span className="font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">{internship.stipend}</span>
+                      <span className="font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">₹{internship.stipend}</span>
                       <span className="flex items-center gap-1"><Clock size={12} className="text-zinc-400" /> {internship.duration}</span>
                       <span className="flex items-center gap-1"><Users size={12} className="text-zinc-400" /> {internship.vacancy} seats</span>
                     </div>
@@ -285,7 +283,6 @@ const Dashboard: React.FC = () => {
                     {metrics.upcomingInterviews.map((interview) => (
                       <div key={interview.internshipId} className="p-3 bg-blue-50 rounded-xl border border-blue-100">
                         <p className="font-semibold text-blue-900 text-sm">{interview.postName}</p>
-                        <p className="text-xs text-blue-600 mt-0.5">{interview.department}</p>
                         <div className="mt-2 space-y-1 text-xs text-blue-700">
                           <div className="flex items-center gap-1.5">
                             <Calendar size={12} />
@@ -366,7 +363,6 @@ const Dashboard: React.FC = () => {
                     <tr className="border-b border-zinc-100">
                       <th className="text-left text-xs text-zinc-500 font-medium pb-3">App ID</th>
                       <th className="text-left text-xs text-zinc-500 font-medium pb-3">Position</th>
-                      <th className="text-left text-xs text-zinc-500 font-medium pb-3 hidden sm:table-cell">Department</th>
                       <th className="text-left text-xs text-zinc-500 font-medium pb-3 hidden md:table-cell">Applied</th>
                       <th className="text-left text-xs text-zinc-500 font-medium pb-3">Status</th>
                     </tr>
@@ -380,7 +376,6 @@ const Dashboard: React.FC = () => {
                       >
                         <td className="py-3 font-mono text-xs text-zinc-500">{app.id}</td>
                         <td className="py-3 font-medium text-zinc-900 max-w-[160px] truncate">{app.internship.postName}</td>
-                        <td className="py-3 text-zinc-500 hidden sm:table-cell">{app.internship.department}</td>
                         <td className="py-3 text-zinc-500 hidden md:table-cell">
                           {new Date(app.appliedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                         </td>

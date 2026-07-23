@@ -12,6 +12,7 @@ import {
 import { internshipService } from '../services/internshipService';
 import { applicationService } from '../services/applicationService';
 import { profileService } from '../services/profileService';
+import { instituteService, type InstituteOption } from '../services/departmentService';
 import { useAuth } from '../hooks/useAuth';
 import type { Internship, User as StudentUser } from '../types';
 import { Button } from '../components/ui/button';
@@ -136,8 +137,16 @@ const ApplicationForm: React.FC = () => {
   const [resetDialog, setResetDialog] = useState(false);
   const today = new Date().toISOString().split('T')[0];
 
-  const { register, handleSubmit, reset, setValue, formState: { errors } } =
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } =
     useForm<FormValues>({ resolver: zodResolver(schema) as any, defaultValues: { date: today, declarationAccepted: false } });
+
+  // Institute → department master data for the cascading dropdowns.
+  const [institutes, setInstitutes] = useState<InstituteOption[]>([]);
+  useEffect(() => {
+    instituteService.getInstitutes().then(setInstitutes).catch(() => setInstitutes([]));
+  }, []);
+  const selectedInstitute = watch('instituteName');
+  const instituteDepts = institutes.find((i) => i.code === selectedInstitute)?.departments ?? [];
 
   // Load internship + prefill
   useEffect(() => {
@@ -148,11 +157,11 @@ const ApplicationForm: React.FC = () => {
       if (data && user) {
         reset({
           date: today,
-          instituteName: (user as any).institute || 'Parul University',
-          // Locked at signup — auto-filled from the profile, not editable here.
+          instituteName: (user as any).institute || '',
+          // Prefilled from signup, but freely editable on the form.
           departmentName: user.department ?? '',
-          degree: 'B.Tech',
-          passingYear: '2026',
+          degree: '',
+          passingYear: '',
           position: data.postName,
           fullName: user.name ?? '',
           enrollmentNumber: user.enrollmentNumber ?? '',
@@ -248,8 +257,8 @@ const ApplicationForm: React.FC = () => {
   const handleReset = () => {
     if (!id || !user || !internship) return;
     reset({
-      date: today, instituteName: (user as any).institute || 'Parul University',
-      departmentName: user.department ?? '', degree: 'B.Tech', passingYear: '2026', position: internship.postName,
+      date: today, instituteName: (user as any).institute || '',
+      departmentName: user.department ?? '', degree: '', passingYear: '', position: internship.postName,
       fullName: user.name ?? '', enrollmentNumber: user.enrollmentNumber ?? '',
       contact: user.contact ?? '', email: user.email ?? '',
       presentAddress: user.address ?? '', declarationAccepted: false
@@ -331,9 +340,6 @@ const ApplicationForm: React.FC = () => {
           <p className="text-xs text-zinc-500">
             <span className="font-semibold text-zinc-700">Position: </span>{internship.postName}
           </p>
-          <p className="text-xs text-zinc-500">
-            <span className="font-semibold text-zinc-700">Department: </span>{internship.department}
-          </p>
         </div>
       </div>
 
@@ -356,10 +362,29 @@ const ApplicationForm: React.FC = () => {
               <Input value={displayDate} readOnly className={`${inp} bg-zinc-50 text-zinc-500 cursor-default`} />
             </Field>
             <Field label="Institute Name" required error={errors.instituteName?.message}>
-              <Input {...register('instituteName')} className={inp} />
+              <select
+                {...register('instituteName', {
+                  onChange: () => setValue('departmentName', ''),
+                })}
+                className={`${inp} w-full h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm`}
+              >
+                <option value="">Select institute…</option>
+                {institutes.map((i) => (
+                  <option key={i.code} value={i.code}>{i.code}</option>
+                ))}
+              </select>
             </Field>
-            <Field label="Department" required hint="Set at signup — contact Admin to change">
-              <Input {...register('departmentName')} readOnly className={`${inp} bg-zinc-50 text-zinc-500 cursor-default`} />
+            <Field label="Department" required error={errors.departmentName?.message}>
+              <select
+                {...register('departmentName')}
+                disabled={!selectedInstitute || instituteDepts.length === 0}
+                className={`${inp} w-full h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm disabled:bg-zinc-50 disabled:text-zinc-400`}
+              >
+                <option value="">{selectedInstitute ? 'Select department…' : 'Select institute first'}</option>
+                {instituteDepts.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
             </Field>
             <Field label="Degree" required error={errors.degree?.message}>
               <Input {...register('degree')} placeholder="B.Tech, BCA, etc." className={inp} />

@@ -7,7 +7,6 @@ import {
   Clock,
   MapPin,
   Users,
-  IndianRupee,
   CheckCircle2,
   ArrowLeft,
   Send,
@@ -87,7 +86,7 @@ const InternshipDetails: React.FC = () => {
   const ApplyCard = (
     <div className="bg-white border border-zinc-200 rounded-2xl p-5 space-y-4">
       <div>
-        <p className="text-2xl font-bold text-blue-700">{internship.stipend}</p>
+        <p className="text-2xl font-bold text-blue-700">₹{internship.stipend}</p>
         <p className="text-zinc-500 text-sm mt-0.5">Monthly Stipend</p>
       </div>
       <div className="space-y-3 text-sm">
@@ -177,9 +176,8 @@ const InternshipDetails: React.FC = () => {
                 {internship.status}
               </Badge>
             </div>
-            <p className="text-zinc-500 text-sm">{internship.department}</p>
             <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-sm text-zinc-500">
-              <span className="flex items-center gap-1.5"><IndianRupee size={14} />{internship.stipend}</span>
+              <span className="flex items-center gap-1.5">₹{internship.stipend}</span>
               <span className="flex items-center gap-1.5"><Clock size={14} />{internship.duration}</span>
               <span className="flex items-center gap-1.5"><Users size={14} />{internship.vacancy} vacancies</span>
               <span className="flex items-center gap-1.5"><Calendar size={14} />Posted {new Date(internship.postedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>

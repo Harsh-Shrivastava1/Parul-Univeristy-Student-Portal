@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { applicationService } from '../services/applicationService';
 import { trainingService, type TrainingInfo } from '../services/trainingService';
@@ -71,7 +71,8 @@ export default function Internship() {
             <h1 className="text-2xl font-bold">Internship Details</h1>
           </div>
           <p className="text-teal-100">
-            {application.internship.postName} at {application.internship.department}
+            {application.internship.postName}
+            {application.assignedDepartment ? ` · ${application.assignedDepartment}` : ''}
           </p>
         </div>
 
@@ -80,13 +81,6 @@ export default function Internship() {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-zinc-900 border-b pb-2">Overview</h3>
               <div className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <Briefcase className="w-5 h-5 text-zinc-400 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-zinc-900">Company / Cell</p>
-                    <p className="text-sm text-zinc-600">{application.internship.department}</p>
-                  </div>
-                </div>
                 <div className="flex items-start gap-3">
                   <Clock className="w-5 h-5 text-zinc-400 mt-0.5" />
                   <div>

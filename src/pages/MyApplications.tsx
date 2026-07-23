@@ -130,7 +130,6 @@ const MyApplications: React.FC = () => {
                   <tr>
                     <th className="text-left text-xs text-zinc-500 font-semibold px-5 py-3.5 uppercase tracking-wide">App ID</th>
                     <th className="text-left text-xs text-zinc-500 font-semibold px-5 py-3.5 uppercase tracking-wide">Internship</th>
-                    <th className="text-left text-xs text-zinc-500 font-semibold px-5 py-3.5 uppercase tracking-wide hidden lg:table-cell">Department</th>
                     <th className="text-left text-xs text-zinc-500 font-semibold px-5 py-3.5 uppercase tracking-wide">Applied</th>
                     <th className="text-left text-xs text-zinc-500 font-semibold px-5 py-3.5 uppercase tracking-wide">Status</th>
                     <th className="text-left text-xs text-zinc-500 font-semibold px-5 py-3.5 uppercase tracking-wide">Actions</th>
@@ -148,7 +147,6 @@ const MyApplications: React.FC = () => {
                       <td className="px-5 py-4">
                         <p className="font-semibold text-zinc-900">{app.internship.postName}</p>
                       </td>
-                      <td className="px-5 py-4 text-zinc-500 hidden lg:table-cell">{app.internship.department}</td>
                       <td className="px-5 py-4 text-zinc-500">
                         {new Date(app.appliedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </td>
@@ -213,7 +211,6 @@ const MyApplications: React.FC = () => {
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div>
                       <p className="font-semibold text-zinc-900 text-sm">{app.internship.postName}</p>
-                      <p className="text-xs text-zinc-500">{app.internship.department}</p>
                     </div>
                     <StatusBadge status={app.status} />
                   </div>
@@ -250,7 +247,9 @@ const MyApplications: React.FC = () => {
             <div className="space-y-4 mt-2">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><p className="text-zinc-500 text-xs">Position</p><p className="font-medium">{selectedApp.internship.postName}</p></div>
-                <div><p className="text-zinc-500 text-xs">Department</p><p className="font-medium">{selectedApp.internship.department}</p></div>
+                {selectedApp.assignedDepartment && (
+                  <div><p className="text-zinc-500 text-xs">Training Department</p><p className="font-medium">{selectedApp.assignedDepartment}</p></div>
+                )}
                 <div><p className="text-zinc-500 text-xs">Applied Date</p><p className="font-medium">{new Date(selectedApp.appliedDate).toLocaleDateString('en-IN')}</p></div>
                 <div><p className="text-zinc-500 text-xs">Status</p><StatusBadge status={selectedApp.status} /></div>
               </div>

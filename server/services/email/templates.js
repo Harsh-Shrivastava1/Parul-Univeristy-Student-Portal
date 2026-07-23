@@ -259,7 +259,7 @@ const LIFECYCLE_TEMPLATES = {
         ['Company', d.company],
         ['Mentor', d.mentorName],
       ]) +
-      p(`Your completion certificate will be shared with you shortly. Thank you for your dedication.`) +
+      p(`Thank you for your dedication.`) +
       signoff(),
   }),
 

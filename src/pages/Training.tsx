@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { applicationService } from '../services/applicationService';
 import { trainingService, type TrainingInfo } from '../services/trainingService';
@@ -76,7 +76,8 @@ export default function Training() {
             <h1 className="text-2xl font-bold">Training Module</h1>
           </div>
           <p className="text-blue-100">
-            {application.internship.postName} at {application.internship.department}
+            {application.internship.postName}
+            {application.assignedDepartment ? ` · ${application.assignedDepartment}` : ''}
           </p>
         </div>
 

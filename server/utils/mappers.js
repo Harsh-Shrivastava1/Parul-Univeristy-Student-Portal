@@ -123,6 +123,9 @@ function toApplication(app, ad) {
     status,
     lastUpdated: app.updatedAt || app.appliedDate || app.createdAt || '',
     formData: app.formData || undefined,
+    // Department the student will train in — set by TEC at interview-complete.
+    // Shown to the student only AFTER selection (ad placement depts stay hidden).
+    assignedDepartment: app.assignedDepartment || undefined,
     timeline,
   };
 }

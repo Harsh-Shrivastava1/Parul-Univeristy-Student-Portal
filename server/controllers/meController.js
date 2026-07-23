@@ -136,14 +136,11 @@ const listDocuments = asyncHandler(async (req, res) => {
     const d = app.documents || {};
     const status = String(app.status || app.applicationStatus || '');
     if (d.applicationPdf) documents.push({ type: 'Application PDF', applicationId: app.id, ref: d.applicationPdf });
-    // Offer letter / completion certificate are generated on-demand by the TEC
-    // backend once the application reaches the right status; surface them here
-    // (aligned with TEC's download gating) so the student gets a download entry
-    // even before a ref has been persisted.
-    if (d.offerLetter || ['Ready To Join', 'Joined'].includes(status))
+    // Offer letter is generated on-demand by the TEC backend once the
+    // application reaches the right status. Completion certificates are issued
+    // PHYSICALLY by the Internship Cell office (college rule) — no digital copy.
+    if (d.offerLetter || ['Ready To Join', 'Joined', 'Internship Completed'].includes(status))
       documents.push({ type: 'Offer Letter', applicationId: app.id, ref: d.offerLetter || null });
-    if (d.completionCertificate || status === 'Joined')
-      documents.push({ type: 'Completion Certificate', applicationId: app.id, ref: d.completionCertificate || null });
   }
   if (training && training.attendanceForm) {
     documents.push({ type: 'Attendance Form', trainingId: training.id, ref: training.attendanceForm });

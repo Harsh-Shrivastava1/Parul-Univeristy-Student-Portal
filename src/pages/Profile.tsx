@@ -130,10 +130,14 @@ const Profile: React.FC = () => {
         attendance: num(data.attendance),
         spiScores,
       } as never);
-      if (updated) {
-        setProfile(updated);
-        login(updated);
+      if (!updated) {
+        // The service returns null on any API failure (e.g. a stale session
+        // whose user no longer exists → 404). Don't pretend the save worked.
+        toast.error('Could not save profile. Please log out and log in again, then retry.');
+        return;
       }
+      setProfile(updated);
+      login(updated);
       setEditing(false);
       toast.success('Profile saved. These details now pre-fill every internship application.');
     } catch {
@@ -302,7 +306,6 @@ const Profile: React.FC = () => {
                 <InfoRow icon={<User size={16} />} label="Mother's Name" value={profile.motherName} />
                 <InfoRow icon={<User size={16} />} label="Date of Birth" value={profile.dateOfBirth} />
                 <InfoRow icon={<User size={16} />} label="Gender" value={profile.gender} />
-                <InfoRow icon={<User size={16} />} label="Category" value={profile.category} />
               </div>
             )}
           </div>

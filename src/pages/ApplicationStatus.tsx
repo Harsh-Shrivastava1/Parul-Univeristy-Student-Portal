@@ -42,8 +42,8 @@ const STATUS_DESCRIPTIONS: Record<ApplicationStatus, string> = {
   'Training Completed': 'Training completed successfully.',
   'Returned to TEC Cell': 'Training is finished, returning control to TEC Cell for final placement.',
   'Internship Starts': 'Your internship has officially started.',
-  'Internship Completed': 'Internship period has ended.',
-  'Final Completion': 'Final completion achieved. Certificates will be issued.',
+  'Internship Completed': 'Internship completed successfully. Collect your certificate from the Internship Cell office.',
+  'Final Completion': 'Internship journey completed. Collect your certificate from the Internship Cell office.',
   Rejected: 'Your application was not selected. Do not be discouraged — apply for other opportunities.',
 };
 
@@ -125,7 +125,11 @@ const ApplicationStatus: React.FC = () => {
                 <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
                   <div>
                     <h2 className="text-lg font-bold text-zinc-900">{currentApp.internship.postName}</h2>
-                    <p className="text-zinc-500 text-sm mt-0.5">{currentApp.internship.department}</p>
+                    {currentApp.assignedDepartment && (
+                      <p className="text-sm text-blue-700 mt-0.5 font-medium">
+                        Training Department: {currentApp.assignedDepartment}
+                      </p>
+                    )}
                     <p className="text-xs text-zinc-400 mt-1 font-mono">{currentApp.id}</p>
                   </div>
                   <div className="text-right">
@@ -220,8 +224,11 @@ const ApplicationStatus: React.FC = () => {
                                 {timelineEntry.notes}
                               </p>
                             )}
+                            {/* Completed/current steps without a recorded timeline
+                                entry show their meaning — never a misleading
+                                "Pending update" under a green check. */}
                             {!timelineEntry && !isFuture && (
-                              <p className="text-xs text-zinc-400 italic">Pending update</p>
+                              <p className="text-xs text-zinc-500">{STATUS_DESCRIPTIONS[step]}</p>
                             )}
                             {isFuture && (
                               <p className="text-xs text-zinc-400">{STATUS_DESCRIPTIONS[step]}</p>
