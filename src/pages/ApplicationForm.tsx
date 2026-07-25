@@ -146,7 +146,15 @@ const ApplicationForm: React.FC = () => {
     instituteService.getInstitutes().then(setInstitutes).catch(() => setInstitutes([]));
   }, []);
   const selectedInstitute = watch('instituteName');
+  const selectedDept = watch('departmentName');
   const instituteDepts = institutes.find((i) => i.code === selectedInstitute)?.departments ?? [];
+  // Always include the student's already-saved department as an option, even if
+  // the institute list hasn't loaded yet or the stored value differs slightly —
+  // so the autofilled value always shows and never silently blanks out.
+  const deptOptions =
+    selectedDept && !instituteDepts.includes(selectedDept)
+      ? [selectedDept, ...instituteDepts]
+      : instituteDepts;
 
   // Load internship + prefill
   useEffect(() => {
@@ -362,13 +370,22 @@ const ApplicationForm: React.FC = () => {
               <Input value={displayDate} readOnly className={`${inp} bg-zinc-50 text-zinc-500 cursor-default`} />
             </Field>
             <Field label="Institute Name" required error={errors.instituteName?.message}>
+              {/* Controlled selects: they display the RHF value (autofilled from
+                  the student's profile) reliably, regardless of when the
+                  institute list finishes loading. */}
               <select
-                {...register('instituteName', {
-                  onChange: () => setValue('departmentName', ''),
-                })}
+                value={selectedInstitute ?? ''}
+                onChange={(e) => {
+                  setValue('instituteName', e.target.value, { shouldValidate: true });
+                  setValue('departmentName', '', { shouldValidate: true });
+                }}
                 className={`${inp} w-full h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm`}
               >
                 <option value="">Select institute…</option>
+                {/* Include the saved institute even before the list loads. */}
+                {selectedInstitute && !institutes.some((i) => i.code === selectedInstitute) && (
+                  <option value={selectedInstitute}>{selectedInstitute}</option>
+                )}
                 {institutes.map((i) => (
                   <option key={i.code} value={i.code}>{i.code}</option>
                 ))}
@@ -376,12 +393,13 @@ const ApplicationForm: React.FC = () => {
             </Field>
             <Field label="Department" required error={errors.departmentName?.message}>
               <select
-                {...register('departmentName')}
-                disabled={!selectedInstitute || instituteDepts.length === 0}
+                value={selectedDept ?? ''}
+                onChange={(e) => setValue('departmentName', e.target.value, { shouldValidate: true })}
+                disabled={deptOptions.length === 0}
                 className={`${inp} w-full h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm disabled:bg-zinc-50 disabled:text-zinc-400`}
               >
-                <option value="">{selectedInstitute ? 'Select department…' : 'Select institute first'}</option>
-                {instituteDepts.map((d) => (
+                <option value="">{selectedInstitute || selectedDept ? 'Select department…' : 'Select institute first'}</option>
+                {deptOptions.map((d) => (
                   <option key={d} value={d}>{d}</option>
                 ))}
               </select>
