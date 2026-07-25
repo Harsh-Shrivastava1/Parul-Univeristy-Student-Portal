@@ -63,6 +63,8 @@ function toProfile(user, student) {
     backlogs: typeof s.backlogs === 'number' ? s.backlogs : 0,
     attendance: typeof s.attendance === 'number' ? s.attendance : 0,
     spiScores: s.spiScores && typeof s.spiScores === 'object' ? s.spiScores : {},
+    degree: s.degree || '',
+    passingYear: s.passingYear || '',
   };
 }
 

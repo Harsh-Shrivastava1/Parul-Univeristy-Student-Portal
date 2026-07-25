@@ -168,8 +168,9 @@ const ApplicationForm: React.FC = () => {
           instituteName: (user as any).institute || '',
           // Prefilled from signup, but freely editable on the form.
           departmentName: user.department ?? '',
-          degree: '',
-          passingYear: '',
+          // Autofilled from the student's saved profile (editable each time).
+          degree: (user as any).degree ?? '',
+          passingYear: (user as any).passingYear ?? '',
           position: data.postName,
           fullName: user.name ?? '',
           enrollmentNumber: user.enrollmentNumber ?? '',
@@ -241,6 +242,8 @@ const ApplicationForm: React.FC = () => {
           languages: (data.languagesKnown || '').split(',').map((s) => s.trim()).filter(Boolean),
           backlogs: Number(data.backlogs),
           attendance: Number(data.attendance),
+          degree: data.degree,
+          passingYear: data.passingYear,
           spiScores: {
             sem1: data.sem1, sem2: data.sem2, sem3: data.sem3, sem4: data.sem4,
             sem5: data.sem5, sem6: data.sem6, sem7: data.sem7, sem8: data.sem8,
@@ -266,7 +269,7 @@ const ApplicationForm: React.FC = () => {
     if (!id || !user || !internship) return;
     reset({
       date: today, instituteName: (user as any).institute || '',
-      departmentName: user.department ?? '', degree: '', passingYear: '', position: internship.postName,
+      departmentName: user.department ?? '', degree: (user as any).degree ?? '', passingYear: (user as any).passingYear ?? '', position: internship.postName,
       fullName: user.name ?? '', enrollmentNumber: user.enrollmentNumber ?? '',
       contact: user.contact ?? '', email: user.email ?? '',
       presentAddress: user.address ?? '', declarationAccepted: false

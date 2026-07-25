@@ -43,6 +43,9 @@ export interface User {
   gender?: string;
   category?: string;
   instituteId?: string;
+  /** Degree + passing year — persisted from the application form, autofilled next time. */
+  degree?: string;
+  passingYear?: string;
 }
 
 export interface Internship {

@@ -34,6 +34,10 @@ const EDITABLE = {
   backlogs: 'backlogs',
   attendance: 'attendance',
   spiScores: 'spiScores',
+  // Degree + passing year: filled once on the application form, then persisted
+  // so every future application pre-fills them (student can still edit).
+  degree: 'degree',
+  passingYear: 'passingYear',
 };
 
 // GET /api/me/profile
