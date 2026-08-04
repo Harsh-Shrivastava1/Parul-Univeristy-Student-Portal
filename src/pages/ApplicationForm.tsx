@@ -359,7 +359,16 @@ const ApplicationForm: React.FC = () => {
         {['Candidate Info', 'Languages', 'Education', 'Experience', 'Support', 'References', 'Declaration', 'Signature'].map((s, i) => (
           <React.Fragment key={s}>
             {i > 0 && <span className="text-zinc-300 flex-shrink-0">›</span>}
-            <a href={`#sec-${i + 1}`} className="whitespace-nowrap hover:text-zinc-700 transition-colors flex-shrink-0">{s}</a>
+            <button
+              type="button"
+              onClick={() => {
+                const el = document.getElementById(`sec-${i + 1}`);
+                el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+              className="whitespace-nowrap hover:text-zinc-700 transition-colors flex-shrink-0 cursor-pointer text-xs"
+            >
+              {s}
+            </button>
           </React.Fragment>
         ))}
       </div>

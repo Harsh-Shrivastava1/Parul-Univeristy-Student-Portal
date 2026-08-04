@@ -1,5 +1,14 @@
+const dns = require('dns');
 const mongoose = require('mongoose');
 const { env } = require('./env');
+
+// On Windows / some ISP networks, Node's default DNS resolver fails to query SRV
+// records (querySrv ECONNREFUSED). Using public DNS servers resolves this.
+try {
+  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+} catch {
+  // fallback to system default
+}
 
 /**
  * Connect to the shared MongoDB Atlas database (parul_internship_system).

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Outlet, NavLink, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
   LayoutDashboard,
@@ -31,12 +31,18 @@ const navItems = [
 export const DashboardLayout: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const mainRef = useRef<HTMLElement>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [profileOpen, setProfileOpen] = useState(false);
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (user) {
@@ -173,7 +179,7 @@ export const DashboardLayout: React.FC = () => {
   );
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-zinc-50 flex flex-col">
+    <div className="fixed inset-0 overflow-hidden bg-zinc-50 flex flex-col">
 
       {/* ── Mobile Top Bar ── */}
       <div className="md:hidden flex-shrink-0 flex items-center justify-between bg-white border-b border-zinc-200 px-4 h-16">
@@ -321,7 +327,7 @@ export const DashboardLayout: React.FC = () => {
           </header>
 
           {/* Scrollable page content */}
-          <main className="flex-1 overflow-y-auto">
+          <main ref={mainRef} className="flex-1 overflow-y-auto min-h-0">
             <div className="p-4 md:p-6 lg:p-8">
               <motion.div
                 key={location.pathname}

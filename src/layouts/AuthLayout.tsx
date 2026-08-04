@@ -64,7 +64,7 @@ export const AuthLayout: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen w-full flex bg-white font-sans selection:bg-red-500/30 relative">
+    <div className="h-full w-full flex bg-white font-sans selection:bg-red-500/30 relative overflow-y-auto">
 
       {/* Light subtle background effects removed for uniform color */}
 
