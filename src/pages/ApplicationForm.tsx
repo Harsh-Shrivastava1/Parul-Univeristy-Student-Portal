@@ -322,7 +322,7 @@ const ApplicationForm: React.FC = () => {
   const displayDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
 
   return (
-    <div className="w-full pb-28 md:pb-4">
+    <div className="w-full pb-4">
 
       {/* ── Back ── */}
       <Button variant="ghost" type="button" onClick={() => navigate(`/internships/${internship.id}`)}
@@ -604,8 +604,8 @@ const ApplicationForm: React.FC = () => {
         </Section>
 
         {/* ── Action Bar ── */}
-        <div className="fixed bottom-0 left-0 right-0 md:sticky md:bottom-4 z-20 px-4 md:px-0">
-          <div className="bg-white border border-zinc-200 rounded-xl md:rounded-xl p-3 shadow-lg flex flex-col sm:flex-row items-center gap-2.5 w-full">
+        <div>
+          <div className="bg-white border border-zinc-200 rounded-xl p-3 shadow-sm flex flex-col sm:flex-row items-center gap-2.5 w-full">
             <Button type="button" variant="ghost" onClick={() => setResetDialog(true)}
               className="w-full sm:w-auto h-9 gap-2 text-zinc-500 hover:text-zinc-700 text-sm order-3 sm:order-1" disabled={submitting}>
               <RotateCcw size={14} />Reset
