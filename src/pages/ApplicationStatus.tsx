@@ -27,7 +27,6 @@ const TIMELINE_STEPS: ApplicationStatus[] = [
   'Returned to TEC Cell',
   'Internship Starts',
   'Internship Completed',
-  'Final Completion',
 ];
 
 const STATUS_DESCRIPTIONS: Record<ApplicationStatus, string> = {

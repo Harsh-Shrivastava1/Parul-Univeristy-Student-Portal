@@ -66,6 +66,23 @@ const schema = z.object({
   reference2Contact: z.string().optional(),
   declarationAccepted: z.boolean().refine((v) => v === true, { message: 'You must accept the declaration' }),
   digitalSignature: z.string().min(2, 'Digital signature (your full name) is required'),
+}).superRefine((data, ctx) => {
+  // SGPA is mandatory for every completed semester — i.e. Sem 1 up to the
+  // student's current semester. Semesters beyond the current one stay optional
+  // (they haven't happened yet). This guarantees the printed application form
+  // always carries the per-semester SGPA the officer needs.
+  const current = Number(data.semester);
+  if (!Number.isFinite(current) || current < 1) return; // handled by `semester` rule
+  for (let i = 1; i <= Math.min(current, 8); i++) {
+    const val = data[`sem${i}` as keyof typeof data];
+    if (val === undefined || val === null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Required',
+        path: [`sem${i}`],
+      });
+    }
+  }
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -147,6 +164,11 @@ const ApplicationForm: React.FC = () => {
   }, []);
   const selectedInstitute = watch('instituteName');
   const selectedDept = watch('departmentName');
+  // How many SPI cells are mandatory: Sem 1 through the student's current
+  // semester. Drives the `*` markers and required placeholders on the table.
+  const currentSemester = Number(watch('semester'));
+  const spiRequiredUpto =
+    Number.isFinite(currentSemester) && currentSemester >= 1 ? Math.min(currentSemester, 8) : 0;
   const instituteDepts = institutes.find((i) => i.code === selectedInstitute)?.departments ?? [];
   // Always include the student's already-saved department as an option, even if
   // the institute list hasn't loaded yet or the stored value differs slightly —
@@ -470,29 +492,35 @@ const ApplicationForm: React.FC = () => {
         <Section id="sec-3" num={3} icon={<GraduationCap size={14} />} title="Education Information">
           {/* SPI Table */}
           <div>
-            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-2">Semester Performance Index (SPI)</p>
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-2">
+              Semester Performance Index (SPI)
+              <span className="ml-2 normal-case font-normal text-zinc-400">SGPA is required for every completed semester (up to your current semester).</span>
+            </p>
             <div className="hidden sm:block border border-zinc-200 rounded-lg overflow-hidden">
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr className="bg-zinc-50 border-b border-zinc-200">
                     {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
                       <th key={s} className="py-2 text-center text-xs font-semibold text-zinc-500 border-r border-zinc-200 last:border-r-0">
-                        Sem {s}
+                        Sem {s}{s <= spiRequiredUpto ? <span className="text-red-500">*</span> : null}
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
-                      <td key={s} className="p-1.5 border-r border-zinc-100 last:border-r-0">
-                        <input
-                          {...register(`sem${s}` as any)}
-                          type="number" step="0.01" min="0" max="10" placeholder="—"
-                          className="w-full text-center text-sm font-mono h-8 rounded-md bg-zinc-50 border-0 focus:bg-white focus:ring-1 focus:ring-zinc-300 outline-none px-1 transition-all"
-                        />
-                      </td>
-                    ))}
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => {
+                      const hasErr = !!errors[`sem${s}` as keyof typeof errors];
+                      return (
+                        <td key={s} className="p-1.5 border-r border-zinc-100 last:border-r-0">
+                          <input
+                            {...register(`sem${s}` as any)}
+                            type="number" step="0.01" min="0" max="10" placeholder={s <= spiRequiredUpto ? 'req' : '—'}
+                            className={`w-full text-center text-sm font-mono h-8 rounded-md border px-1 outline-none transition-all focus:bg-white focus:ring-1 ${hasErr ? 'border-red-400 bg-red-50 focus:ring-red-300' : 'border-transparent bg-zinc-50 focus:ring-zinc-300'}`}
+                          />
+                        </td>
+                      );
+                    })}
                   </tr>
                 </tbody>
               </table>
@@ -500,14 +528,20 @@ const ApplicationForm: React.FC = () => {
 
             {/* Mobile SPI */}
             <div className="sm:hidden grid grid-cols-4 gap-2">
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
-                <div key={s}>
-                  <p className="text-[10px] text-zinc-500 text-center mb-1 font-medium">Sem {s}</p>
-                  <input {...register(`sem${s}` as any)} type="number" step="0.01" min="0" max="10" placeholder="—"
-                    className="w-full text-center text-sm font-mono h-8 rounded-lg border border-zinc-200 focus:border-zinc-400 outline-none px-1" />
-                </div>
-              ))}
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => {
+                const hasErr = !!errors[`sem${s}` as keyof typeof errors];
+                return (
+                  <div key={s}>
+                    <p className="text-[10px] text-zinc-500 text-center mb-1 font-medium">Sem {s}{s <= spiRequiredUpto ? <span className="text-red-500">*</span> : null}</p>
+                    <input {...register(`sem${s}` as any)} type="number" step="0.01" min="0" max="10" placeholder={s <= spiRequiredUpto ? 'req' : '—'}
+                      className={`w-full text-center text-sm font-mono h-8 rounded-lg border outline-none px-1 ${hasErr ? 'border-red-400 bg-red-50' : 'border-zinc-200 focus:border-zinc-400'}`} />
+                  </div>
+                );
+              })}
             </div>
+            {[1, 2, 3, 4, 5, 6, 7, 8].some((s) => errors[`sem${s}` as keyof typeof errors]) ? (
+              <p className="text-xs text-red-500 mt-1.5">Enter SGPA for every semester up to your current semester (Sem 1–{spiRequiredUpto}).</p>
+            ) : null}
           </div>
 
           {/* Academic stats */}
