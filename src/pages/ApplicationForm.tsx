@@ -67,13 +67,14 @@ const schema = z.object({
   declarationAccepted: z.boolean().refine((v) => v === true, { message: 'You must accept the declaration' }),
   digitalSignature: z.string().min(2, 'Digital signature (your full name) is required'),
 }).superRefine((data, ctx) => {
-  // SGPA is mandatory for every completed semester — i.e. Sem 1 up to the
-  // student's current semester. Semesters beyond the current one stay optional
-  // (they haven't happened yet). This guarantees the printed application form
-  // always carries the per-semester SGPA the officer needs.
+  // SGPA is mandatory only for semesters whose results are declared — i.e. up to
+  // (current semester − 2). A student in Sem 5 must fill Sem 1–3; the most recent
+  // one or two semesters' results may not be out yet, so they stay optional. This
+  // still guarantees the printed form carries the per-semester SGPA the officer needs.
   const current = Number(data.semester);
   if (!Number.isFinite(current) || current < 1) return; // handled by `semester` rule
-  for (let i = 1; i <= Math.min(current, 8); i++) {
+  const requiredUpto = Math.min(current - 2, 8);
+  for (let i = 1; i <= requiredUpto; i++) {
     const val = data[`sem${i}` as keyof typeof data];
     if (val === undefined || val === null || typeof val !== 'number' || Number.isNaN(val)) {
       ctx.addIssue({
@@ -164,11 +165,14 @@ const ApplicationForm: React.FC = () => {
   }, []);
   const selectedInstitute = watch('instituteName');
   const selectedDept = watch('departmentName');
-  // How many SPI cells are mandatory: Sem 1 through the student's current
-  // semester. Drives the `*` markers and required placeholders on the table.
+  // How many SPI cells are mandatory: Sem 1 through (current semester − 2), i.e.
+  // only the semesters whose results are declared. Drives the `*` markers and
+  // required placeholders on the table.
   const currentSemester = Number(watch('semester'));
   const spiRequiredUpto =
-    Number.isFinite(currentSemester) && currentSemester >= 1 ? Math.min(currentSemester, 8) : 0;
+    Number.isFinite(currentSemester) && currentSemester >= 1
+      ? Math.max(0, Math.min(currentSemester - 2, 8))
+      : 0;
   const instituteDepts = institutes.find((i) => i.code === selectedInstitute)?.departments ?? [];
   // Always include the student's already-saved department as an option, even if
   // the institute list hasn't loaded yet or the stored value differs slightly —
@@ -504,7 +508,7 @@ const ApplicationForm: React.FC = () => {
           <div>
             <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-2">
               Semester Performance Index (SPI)
-              <span className="ml-2 normal-case font-normal text-zinc-400">SGPA is required for every completed semester (up to your current semester).</span>
+              <span className="ml-2 normal-case font-normal text-zinc-400">{spiRequiredUpto >= 1 ? `SGPA is required up to two semesters before your current one (Sem 1–${spiRequiredUpto}).` : 'SGPA is optional at your current semester — fill whatever results are declared.'}</span>
             </p>
             <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 p-3 bg-zinc-50/60 border border-zinc-200 rounded-xl">
               {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => {
@@ -534,7 +538,7 @@ const ApplicationForm: React.FC = () => {
             {[1, 2, 3, 4, 5, 6, 7, 8].some((s) => errors[`sem${s}` as keyof typeof errors]) ? (
               <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
                 <AlertCircle size={11} className="flex-shrink-0" />
-                Enter SGPA for every semester up to your current semester (Sem 1–{spiRequiredUpto}).
+                Enter SGPA up to two semesters before your current one (Sem 1–{spiRequiredUpto}).
               </p>
             ) : null}
           </div>
