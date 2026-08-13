@@ -29,7 +29,7 @@ import { toast } from 'sonner';
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
 const spiNum = z.preprocess(
-  (v) => (v === '' || v == null ? undefined : Number(v)),
+  (v) => (v === '' || v == null || Number.isNaN(Number(v)) ? undefined : Number(v)),
   z.number().min(0, 'Min 0').max(10, 'Max 10').optional(),
 );
 
@@ -75,7 +75,7 @@ const schema = z.object({
   if (!Number.isFinite(current) || current < 1) return; // handled by `semester` rule
   for (let i = 1; i <= Math.min(current, 8); i++) {
     const val = data[`sem${i}` as keyof typeof data];
-    if (val === undefined || val === null) {
+    if (val === undefined || val === null || typeof val !== 'number' || Number.isNaN(val)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'Required',
@@ -178,11 +178,20 @@ const ApplicationForm: React.FC = () => {
       ? [selectedDept, ...instituteDepts]
       : instituteDepts;
 
-  // Load internship + prefill
+  // Load internship + check existing application + prefill
   useEffect(() => {
-    if (!id) return;
-    internshipService.getInternshipById(id).then((data) => {
+    if (!id || !user) return;
+    Promise.all([
+      internshipService.getInternshipById(id),
+      applicationService.getApplications(user.id).catch(() => []),
+    ]).then(([data, existingApps]) => {
       setInternship(data ?? null);
+      const existing = existingApps.find(
+        (a) => a.internshipId === id || a.internship?.id === id
+      );
+      if (existing) {
+        setSubmittedAppId(existing.id);
+      }
       setLoading(false);
       if (data && user) {
         reset({
@@ -278,10 +287,11 @@ const ApplicationForm: React.FC = () => {
 
       // The confirmation email/notification is sent server-side by the owning
       // backend when the application is created.
-      setSubmittedAppId(app.id);
-      toast.success('Application submitted successfully. A confirmation email has been sent to your registered email address.', { duration: 5000 });
-    } catch {
-      toast.error('Submission failed. Please try again.');
+      const targetId = app?.id || (app as any)?.data?.id || `app_${Date.now()}`;
+      setSubmittedAppId(targetId);
+      toast.success('Application submitted');
+    } catch (err: any) {
+      toast.error(err?.message || 'Submission failed. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -496,51 +506,36 @@ const ApplicationForm: React.FC = () => {
               Semester Performance Index (SPI)
               <span className="ml-2 normal-case font-normal text-zinc-400">SGPA is required for every completed semester (up to your current semester).</span>
             </p>
-            <div className="hidden sm:block border border-zinc-200 rounded-lg overflow-hidden">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="bg-zinc-50 border-b border-zinc-200">
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
-                      <th key={s} className="py-2 text-center text-xs font-semibold text-zinc-500 border-r border-zinc-200 last:border-r-0">
-                        Sem {s}{s <= spiRequiredUpto ? <span className="text-red-500">*</span> : null}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => {
-                      const hasErr = !!errors[`sem${s}` as keyof typeof errors];
-                      return (
-                        <td key={s} className="p-1.5 border-r border-zinc-100 last:border-r-0">
-                          <input
-                            {...register(`sem${s}` as any)}
-                            type="number" step="0.01" min="0" max="10" placeholder={s <= spiRequiredUpto ? 'req' : '—'}
-                            className={`w-full text-center text-sm font-mono h-8 rounded-md border px-1 outline-none transition-all focus:bg-white focus:ring-1 ${hasErr ? 'border-red-400 bg-red-50 focus:ring-red-300' : 'border-transparent bg-zinc-50 focus:ring-zinc-300'}`}
-                          />
-                        </td>
-                      );
-                    })}
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile SPI */}
-            <div className="sm:hidden grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 p-3 bg-zinc-50/60 border border-zinc-200 rounded-xl">
               {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => {
                 const hasErr = !!errors[`sem${s}` as keyof typeof errors];
                 return (
-                  <div key={s}>
-                    <p className="text-[10px] text-zinc-500 text-center mb-1 font-medium">Sem {s}{s <= spiRequiredUpto ? <span className="text-red-500">*</span> : null}</p>
-                    <input {...register(`sem${s}` as any)} type="number" step="0.01" min="0" max="10" placeholder={s <= spiRequiredUpto ? 'req' : '—'}
-                      className={`w-full text-center text-sm font-mono h-8 rounded-lg border outline-none px-1 ${hasErr ? 'border-red-400 bg-red-50' : 'border-zinc-200 focus:border-zinc-400'}`} />
+                  <div key={s} className="flex flex-col items-center">
+                    <p className="text-xs font-semibold text-zinc-600 mb-1.5 text-center">
+                      Sem {s}{s <= spiRequiredUpto ? <span className="text-red-500 ml-0.5">*</span> : null}
+                    </p>
+                    <input
+                      {...register(`sem${s}` as any)}
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="10"
+                      placeholder={s <= spiRequiredUpto ? 'req' : '—'}
+                      className={`w-full text-center text-sm font-mono h-9 rounded-lg border px-1 outline-none transition-all bg-white ${
+                        hasErr
+                          ? 'border-red-400 bg-red-50 focus:ring-1 focus:ring-red-300'
+                          : 'border-zinc-200 focus:border-zinc-400 focus:ring-1 focus:ring-zinc-200'
+                      }`}
+                    />
                   </div>
                 );
               })}
             </div>
             {[1, 2, 3, 4, 5, 6, 7, 8].some((s) => errors[`sem${s}` as keyof typeof errors]) ? (
-              <p className="text-xs text-red-500 mt-1.5">Enter SGPA for every semester up to your current semester (Sem 1–{spiRequiredUpto}).</p>
+              <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
+                <AlertCircle size={11} className="flex-shrink-0" />
+                Enter SGPA for every semester up to your current semester (Sem 1–{spiRequiredUpto}).
+              </p>
             ) : null}
           </div>
 

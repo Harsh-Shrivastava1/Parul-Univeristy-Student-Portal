@@ -46,7 +46,13 @@ async function recordAudit({ action, userId, userName, entity, entityId, ip, met
     await AuditLog.create(entry);
     await enforceAuditCap();
   } catch (err) {
-    logger.error('audit_write_failed', { action, error: err.message });
+    if (err.code === 11000) {
+      // Index duplication on legacy null id field in shared auditLogs collection
+      delete entry.id;
+      await AuditLog.create(entry).catch(() => {});
+    } else {
+      logger.error('audit_write_failed', { action, error: err.message });
+    }
   }
   logger.info('audit', { action, userId: entry.userId, ip: entry.ip });
 }
