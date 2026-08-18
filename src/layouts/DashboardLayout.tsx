@@ -18,6 +18,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { notificationService } from '../services/notificationService';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { formatDate } from '../lib/dateUtils';
 
 const navItems = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard, end: true },
@@ -38,7 +39,7 @@ export const DashboardLayout: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [profileOpen, setProfileOpen] = useState(false);
   const now = new Date();
-  const dateStr = now.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  const dateStr = formatDate(now);
 
   useEffect(() => {
     mainRef.current?.scrollTo(0, 0);

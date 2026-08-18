@@ -25,6 +25,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
+import { formatDate } from '../lib/dateUtils';
 
 // Skeleton
 const DashboardSkeleton = () => (
@@ -286,9 +287,7 @@ const Dashboard: React.FC = () => {
                         <div className="mt-2 space-y-1 text-xs text-blue-700">
                           <div className="flex items-center gap-1.5">
                             <Calendar size={12} />
-                            {new Date(interview.interviewDate).toLocaleDateString('en-IN', {
-                              day: 'numeric', month: 'short', year: 'numeric',
-                            })} · {interview.interviewTime}
+                            {formatDate(interview.interviewDate)} · {interview.interviewTime}
                           </div>
                           <div className="flex items-center gap-1.5">
                             <MapPin size={12} />
@@ -377,7 +376,7 @@ const Dashboard: React.FC = () => {
                         <td className="py-3 font-mono text-xs text-zinc-500">{app.id}</td>
                         <td className="py-3 font-medium text-zinc-900 max-w-[160px] truncate">{app.internship.postName}</td>
                         <td className="py-3 text-zinc-500 hidden md:table-cell">
-                          {new Date(app.appliedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                          {formatDate(app.appliedDate)}
                         </td>
                         <td className="py-3">
                           <StatusBadge status={app.status} />

@@ -8,6 +8,7 @@ const connectDB = require('./config/db');
 const apiRoutes = require('./routes');
 const errorHandler = require('./middleware/errorHandler');
 const { verifyEmailTransport } = require('./services/email/mailer');
+const { startApplicationWatcher } = require('./utils/applicationWatcher');
 
 const app = express();
 
@@ -55,6 +56,10 @@ const start = async () => {
   // Non-fatal: surface SMTP status at startup. Email is graceful/optional, so
   // a failed verification never aborts the boot (server keeps serving).
   verifyEmailTransport().catch(() => {});
+  // Start the application change-stream watcher. This auto-creates notifications
+  // for every application status change made by any portal (TEC, Coordinator, etc.)
+  // Requires a MongoDB replica set / Atlas. Falls back gracefully on standalone DBs.
+  startApplicationWatcher();
   const server = app.listen(env.port, () => {
     console.log(`🚀  Student Portal API on http://localhost:${env.port}`);
     console.log(`📡  API base: http://localhost:${env.port}/api`);

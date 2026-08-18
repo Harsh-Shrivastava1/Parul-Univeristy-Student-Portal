@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { applicationService } from '../services/applicationService';
 import { trainingService, type TrainingInfo } from '../services/trainingService';
+import { documentService } from '../services/documentService';
 import type { Application } from '../types';
-import { ArrowLeft, Briefcase, CheckCircle, Clock, Calendar, CheckSquare } from 'lucide-react';
+import { ArrowLeft, Briefcase, CheckCircle, Clock, Calendar, CheckSquare, Download } from 'lucide-react';
+import { toast } from 'sonner';
+import { isAttendanceFormAvailable } from '../lib/statusUtils';
 
 export default function Internship() {
   const { id } = useParams<{ id: string }>();
@@ -11,6 +14,20 @@ export default function Internship() {
   const [application, setApplication] = useState<Application | null>(null);
   const [training, setTraining] = useState<TrainingInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [downloadingAttendance, setDownloadingAttendance] = useState(false);
+
+  const handleDownloadAttendance = async () => {
+    if (!application) return;
+    setDownloadingAttendance(true);
+    try {
+      await documentService.download(application.id, 'training-application', `Training_Application_${application.id}.pdf`);
+      toast.success(`Training Attendance Form downloaded: Training_Application_${application.id}.pdf`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Training attendance form is not available yet.');
+    } finally {
+      setDownloadingAttendance(false);
+    }
+  };
 
   useEffect(() => {
     if (id) {
@@ -95,6 +112,18 @@ export default function Internship() {
                     <p className="text-sm text-zinc-600">{training.joiningDate || 'To be decided by Mentor'}</p>
                   </div>
                 </div>
+                {isAttendanceFormAvailable(application.status) && (
+                  <div className="pt-2">
+                    <button
+                      onClick={handleDownloadAttendance}
+                      disabled={downloadingAttendance}
+                      className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg text-sm font-medium text-blue-700 transition-colors"
+                    >
+                      <Download className="w-4 h-4" />
+                      {downloadingAttendance ? 'Downloading…' : 'Download Training Attendance Application Form'}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 

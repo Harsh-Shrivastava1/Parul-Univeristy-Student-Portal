@@ -6,6 +6,7 @@ import { documentService } from '../services/documentService';
 import type { Application } from '../types';
 import { ArrowLeft, BookOpen, Clock, MapPin, User, Download } from 'lucide-react';
 import { toast } from 'sonner';
+import { isAttendanceFormAvailable } from '../lib/statusUtils';
 
 export default function Training() {
   const { id } = useParams<{ id: string }>();
@@ -30,9 +31,10 @@ export default function Training() {
   const handleDownloadAttendance = async () => {
     if (!application) return;
     try {
-      await documentService.download(application.id, 'attendance-form', `PU_Attendance_${application.id}.pdf`);
+      await documentService.download(application.id, 'training-application', `Training_Application_${application.id}.pdf`);
+      toast.success(`Training Attendance Form downloaded: Training_Application_${application.id}.pdf`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Attendance form is not available yet.');
+      toast.error(e instanceof Error ? e.message : 'Training attendance form is not available yet.');
     }
   };
 
@@ -113,13 +115,19 @@ export default function Training() {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-zinc-900 border-b pb-2">Actions</h3>
               <div className="grid grid-cols-1 gap-3">
-                <button
-                  onClick={handleDownloadAttendance}
-                  className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 rounded-lg text-sm font-medium text-zinc-700 transition-colors"
-                >
-                  <Download className="w-4 h-4" />
-                  Download Attendance Form
-                </button>
+                {isAttendanceFormAvailable(application.status) ? (
+                  <button
+                    onClick={handleDownloadAttendance}
+                    className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 rounded-lg text-sm font-medium text-zinc-700 transition-colors"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download Attendance Form
+                  </button>
+                ) : (
+                  <p className="text-xs text-zinc-500 bg-zinc-50 p-3 rounded-lg border border-zinc-100">
+                    Attendance form will become available once your internship officially starts.
+                  </p>
+                )}
               </div>
             </div>
           </div>

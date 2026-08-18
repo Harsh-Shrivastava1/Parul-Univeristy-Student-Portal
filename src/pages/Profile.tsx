@@ -20,6 +20,8 @@ import { Skeleton } from '../components/ui/skeleton';
 import { Separator } from '../components/ui/separator';
 import ChangePasswordCard from '../components/ChangePasswordCard';
 import { toast } from 'sonner';
+import { formatDate } from '../lib/dateUtils';
+import { isAttendanceFormAvailable } from '../lib/statusUtils';
 
 const schema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -166,9 +168,7 @@ const Profile: React.FC = () => {
 
   if (!profile) return null;
 
-  const attendanceApp = applications.find((app) =>
-    ['Training Starts', 'Training Completed', 'Returned to TEC Cell', 'Internship Starts', 'Internship Completed', 'Final Completion'].includes(app.status)
-  );
+  const attendanceApp = applications.find((app) => isAttendanceFormAvailable(app.status));
 
   const handleDownloadTrainingForm = async () => {
     if (!attendanceApp) return;
@@ -236,7 +236,7 @@ const Profile: React.FC = () => {
               </span>
             </div>
             <p className="text-zinc-400 text-xs mt-1 font-mono tracking-wide">ID: {profile.enrollmentNumber}</p>
-            {applications.some(app => ['Training Starts', 'Training Completed', 'Returned to TEC Cell', 'Internship Starts', 'Internship Completed', 'Final Completion'].includes(app.status)) && (
+            {applications.some((app) => isAttendanceFormAvailable(app.status)) && (
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button
                   variant="outline"
@@ -304,7 +304,7 @@ const Profile: React.FC = () => {
                 <InfoRow icon={<MapPin size={16} />} label="Present Address" value={profile.address} />
                 <InfoRow icon={<User size={16} />} label="Father's Name" value={profile.fatherName} />
                 <InfoRow icon={<User size={16} />} label="Mother's Name" value={profile.motherName} />
-                <InfoRow icon={<User size={16} />} label="Date of Birth" value={profile.dateOfBirth} />
+                <InfoRow icon={<User size={16} />} label="Date of Birth" value={profile.dateOfBirth ? formatDate(profile.dateOfBirth) : undefined} />
                 <InfoRow icon={<User size={16} />} label="Gender" value={profile.gender} />
               </div>
             )}

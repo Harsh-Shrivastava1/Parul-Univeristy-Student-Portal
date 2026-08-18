@@ -20,6 +20,8 @@ import {
   DialogDescription,
 } from '../components/ui/dialog';
 import { toast } from 'sonner';
+import { formatDate, formatDateTime } from '../lib/dateUtils';
+import { isAttendanceFormAvailable } from '../lib/statusUtils';
 
 const SummaryCard: React.FC<{ label: string; value: number; icon: React.ReactNode; color: string; bg: string }> = ({
   label, value, icon, color, bg,
@@ -45,6 +47,7 @@ const MyApplications: React.FC = () => {
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [withdrawing, setWithdrawing] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadingAttendanceId, setDownloadingAttendanceId] = useState<string | null>(null);
 
   const handleDownloadPDF = async (app: Application) => {
     setDownloadingId(app.id);
@@ -55,6 +58,18 @@ const MyApplications: React.FC = () => {
       toast.error(e instanceof Error ? e.message : 'Download failed. Please try again.');
     } finally {
       setDownloadingId(null);
+    }
+  };
+
+  const handleDownloadAttendance = async (app: Application) => {
+    setDownloadingAttendanceId(app.id);
+    try {
+      await documentService.download(app.id, 'training-application', `Training_Application_${app.id}.pdf`);
+      toast.success(`Training Attendance Form downloaded: Training_Application_${app.id}.pdf`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Training attendance form is not available yet.');
+    } finally {
+      setDownloadingAttendanceId(null);
     }
   };
 
@@ -148,7 +163,7 @@ const MyApplications: React.FC = () => {
                         <p className="font-semibold text-zinc-900">{app.internship.postName}</p>
                       </td>
                       <td className="px-5 py-4 text-zinc-500">
-                        {new Date(app.appliedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {formatDate(app.appliedDate)}
                       </td>
                       <td className="px-5 py-4">
                         <StatusBadge status={app.status} />
@@ -177,12 +192,26 @@ const MyApplications: React.FC = () => {
                             onClick={() => handleDownloadPDF(app)}
                             disabled={downloadingId === app.id}
                             className="h-8 text-zinc-500 hover:bg-zinc-100"
-                            title="Download PDF"
+                            title="Download Application PDF"
                           >
                             {downloadingId === app.id
                               ? <Loader2 size={14} className="animate-spin" />
                               : <Download size={14} />}
                           </Button>
+                          {isAttendanceFormAvailable(app.status) && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDownloadAttendance(app)}
+                              disabled={downloadingAttendanceId === app.id}
+                              className="h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              title="Download Training Attendance Application Form"
+                            >
+                              {downloadingAttendanceId === app.id
+                                ? <Loader2 size={14} className="animate-spin" />
+                                : <FileText size={14} />}
+                            </Button>
+                          )}
                           {app.status === 'Applied' && (
                             <Button
                               size="sm"
@@ -217,7 +246,7 @@ const MyApplications: React.FC = () => {
                   <div className="flex items-center gap-3 text-xs text-zinc-500 mb-3">
                     <span className="font-mono">{app.id}</span>
                     <span>·</span>
-                    <span>{new Date(app.appliedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                    <span>{formatDate(app.appliedDate)}</span>
                   </div>
                   <div className="flex gap-2">
                     <Button size="sm" variant="outline" onClick={() => setSelectedApp(app)} className="flex-1 h-9 text-xs border-zinc-300">
@@ -250,7 +279,7 @@ const MyApplications: React.FC = () => {
                 {selectedApp.assignedDepartment && (
                   <div><p className="text-zinc-500 text-xs">Training Department</p><p className="font-medium">{selectedApp.assignedDepartment}</p></div>
                 )}
-                <div><p className="text-zinc-500 text-xs">Applied Date</p><p className="font-medium">{new Date(selectedApp.appliedDate).toLocaleDateString('en-IN')}</p></div>
+                <div><p className="text-zinc-500 text-xs">Applied Date</p><p className="font-medium">{formatDate(selectedApp.appliedDate)}</p></div>
                 <div><p className="text-zinc-500 text-xs">Status</p><StatusBadge status={selectedApp.status} /></div>
               </div>
               <div>
@@ -262,18 +291,40 @@ const MyApplications: React.FC = () => {
                         <span className="text-blue-700 text-xs font-bold">{i + 1}</span>
                       </div>
                       <div>
-                        <p className="font-medium text-sm text-zinc-900">{entry.status}</p>
-                        <p className="text-xs text-zinc-500">{new Date(entry.timestamp).toLocaleString('en-IN')}</p>
-                        {entry.notes && <p className="text-xs text-zinc-600 mt-1">{entry.notes}</p>}
+                        <p className="font-medium text-sm text-zinc-900">
+                          {entry.status === 'Assigned to Respective Cell' && (selectedApp.assignedDepartment || selectedApp.assignedCell)
+                            ? `Assigned to ${selectedApp.assignedDepartment || selectedApp.assignedCell}`
+                            : entry.status}
+                        </p>
+                        <p className="text-xs text-zinc-500">{formatDateTime(entry.timestamp)}</p>
+                        {entry.notes && (
+                          <p className="text-xs text-zinc-600 mt-1">
+                            {entry.status === 'Assigned to Respective Cell' && (selectedApp.assignedDepartment || selectedApp.assignedCell) && (entry.notes.toLowerCase().includes('respective cell') || entry.notes.trim() === 'Assigned to Respective Cell')
+                              ? `You have been assigned to ${selectedApp.assignedDepartment || selectedApp.assignedCell}.`
+                              : entry.notes}
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-              <div className="flex gap-2 pt-2">
+              <div className="flex flex-wrap gap-2 pt-2">
                 <Button onClick={() => navigate(`/applications/${selectedApp.id}/status`)} className="flex-1 bg-blue-600 hover:bg-blue-700">
                   View Full Status
                 </Button>
+                {isAttendanceFormAvailable(selectedApp.status) && (
+                  <Button
+                    variant="outline"
+                    onClick={() => handleDownloadAttendance(selectedApp)}
+                    disabled={downloadingAttendanceId === selectedApp.id}
+                    className="gap-2 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  >
+                    {downloadingAttendanceId === selectedApp.id
+                      ? <><Loader2 size={15} className="animate-spin" /> Attendance...</>
+                      : <><FileText size={15} /> Attendance Form</>}
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   onClick={() => handleDownloadPDF(selectedApp)}

@@ -19,6 +19,7 @@ import { Button } from '../components/ui/button';
 import { Skeleton } from '../components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { toast } from 'sonner';
+import { formatDate } from '../lib/dateUtils';
 
 function timeAgo(date: string): string {
   const diff = Date.now() - new Date(date).getTime();
@@ -154,10 +155,11 @@ const Notifications: React.FC = () => {
                         {!notif.read && (
                           <span className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0" />
                         )}
-                        <span className="text-xs text-zinc-400">{timeAgo(notif.date)}</span>
+                        <span className="text-xs text-zinc-400" title={formatDate(notif.date)}>{timeAgo(notif.date)}</span>
                       </div>
                     </div>
                     <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">{notif.message}</p>
+                    <p className="text-xs text-zinc-400 mt-1">{formatDate(notif.date)}</p>
                   </div>
 
                   {/* Actions */}

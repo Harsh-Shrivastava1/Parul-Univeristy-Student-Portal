@@ -25,6 +25,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '../components/ui/dialog';
 import { toast } from 'sonner';
+import { formatDate } from '../lib/dateUtils';
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -355,7 +356,7 @@ const ApplicationForm: React.FC = () => {
     </div>
   );
 
-  const displayDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+  const displayDate = formatDate(new Date());
 
   return (
     <div className="w-full pb-4">

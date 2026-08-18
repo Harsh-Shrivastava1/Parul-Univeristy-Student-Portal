@@ -24,6 +24,7 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
 import { toast } from 'sonner';
+import { formatDate } from '../lib/dateUtils';
 
 const InternshipDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -93,7 +94,7 @@ const InternshipDetails: React.FC = () => {
         {[
           { icon: Clock, label: 'Duration', value: internship.duration },
           { icon: Users, label: 'Vacancies', value: `${internship.vacancy} seat${internship.vacancy !== 1 ? 's' : ''}` },
-          { icon: Calendar, label: 'Interview', value: new Date(internship.interviewDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) },
+          { icon: Calendar, label: 'Interview', value: formatDate(internship.interviewDate) },
           { icon: Clock, label: 'Time', value: internship.interviewTime },
           { icon: MapPin, label: 'Venue', value: internship.venue },
         ].map(({ icon: Icon, label, value }) => (
@@ -180,7 +181,7 @@ const InternshipDetails: React.FC = () => {
               <span className="flex items-center gap-1.5">₹{internship.stipend}</span>
               <span className="flex items-center gap-1.5"><Clock size={14} />{internship.duration}</span>
               <span className="flex items-center gap-1.5"><Users size={14} />{internship.vacancy} vacancies</span>
-              <span className="flex items-center gap-1.5"><Calendar size={14} />Posted {new Date(internship.postedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+              <span className="flex items-center gap-1.5"><Calendar size={14} />Posted {formatDate(internship.postedDate)}</span>
             </div>
             {internship.minCGPA && (
               <div className="flex items-center gap-1.5 mt-2 text-sm text-amber-700">

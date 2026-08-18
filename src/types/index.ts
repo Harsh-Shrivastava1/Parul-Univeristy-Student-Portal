@@ -133,6 +133,7 @@ export interface Application {
   formData?: ApplicationFormData;
   /** Department the student trains in — set by TEC after interview completion. */
   assignedDepartment?: string;
+  assignedCell?: string;
   timeline: {
     status: ApplicationStatus;
     timestamp: string;

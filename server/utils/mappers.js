@@ -99,13 +99,32 @@ function minimalInternship(app) {
 function toApplication(app, ad) {
   const internship = toInternship(ad) || minimalInternship(app);
   const status = mapStatus(app.status || app.applicationStatus);
+  const assignedCell =
+    app.assignedDepartment ||
+    app.assignedCell ||
+    app.assignedCellName ||
+    app.cell ||
+    app.cellName ||
+    app.allocatedCell ||
+    app.allocatedDepartment ||
+    undefined;
+
   const timeline =
     Array.isArray(app.timeline) && app.timeline.length
-      ? app.timeline.map((t) => ({
-          status: mapStatus(t.currentStatus || t.status || t.title),
-          timestamp: t.at || t.timestamp || app.createdAt || '',
-          notes: t.description || t.remarks || t.title || undefined,
-        }))
+      ? app.timeline.map((t) => {
+          const stepStatus = mapStatus(t.currentStatus || t.status || t.title);
+          let notes = t.description || t.remarks || t.title || undefined;
+          if (stepStatus === 'Assigned to Respective Cell' && assignedCell) {
+            if (!notes || notes === 'You have been assigned to your respective cell.' || notes.toLowerCase().includes('respective cell')) {
+              notes = `You have been assigned to ${assignedCell}.`;
+            }
+          }
+          return {
+            status: stepStatus,
+            timestamp: t.at || t.timestamp || app.createdAt || '',
+            notes,
+          };
+        })
       : [
           {
             status,
@@ -123,9 +142,10 @@ function toApplication(app, ad) {
     status,
     lastUpdated: app.updatedAt || app.appliedDate || app.createdAt || '',
     formData: app.formData || undefined,
-    // Department the student will train in — set by TEC at interview-complete.
+    // Department / Cell the student will train in — set by TEC at interview-complete.
     // Shown to the student only AFTER selection (ad placement depts stay hidden).
-    assignedDepartment: app.assignedDepartment || undefined,
+    assignedDepartment: assignedCell,
+    assignedCell,
     timeline,
   };
 }

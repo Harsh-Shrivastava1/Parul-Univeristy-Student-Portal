@@ -11,6 +11,7 @@ import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { formatDate } from '../lib/dateUtils';
 
 const DURATIONS = ['All', '1 Month', '2 Months', '3 Months', '4 Months', '6 Months'];
 const STATUSES = ['All', 'Open', 'Closed'];
@@ -75,7 +76,7 @@ const InternshipCard: React.FC<{ internship: Internship; onClick: () => void }> 
         </span>
         <span className="flex items-center gap-1">
           <Calendar size={12} />
-          {new Date(internship.interviewDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+          {formatDate(internship.interviewDate)}
         </span>
       </div>
       <span className="text-blue-600 text-xs font-semibold flex items-center gap-0.5 group-hover:gap-1.5 transition-all">

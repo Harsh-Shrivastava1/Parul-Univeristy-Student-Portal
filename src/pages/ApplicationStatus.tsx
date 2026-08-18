@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Circle, Clock } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, FileText } from 'lucide-react';
 import { applicationService } from '../services/applicationService';
+import { documentService } from '../services/documentService';
 import { useAuth } from '../hooks/useAuth';
 import type { Application, ApplicationStatus } from '../types';
 import { PageHeader } from '../components/shared/PageHeader';
@@ -12,7 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Progress } from '../components/ui/progress';
 import { Skeleton } from '../components/ui/skeleton';
 import { EmptyState } from '../components/shared/EmptyState';
-import { FileText } from 'lucide-react';
+import { formatDate, formatDateTime } from '../lib/dateUtils';
+import { isAttendanceFormAvailable } from '../lib/statusUtils';
+import { toast } from 'sonner';
 
 const TIMELINE_STEPS: ApplicationStatus[] = [
   'Applied',
@@ -53,12 +56,41 @@ function getProgressPercent(status: ApplicationStatus): number {
   return Math.round(((idx) / (TIMELINE_STEPS.length - 1)) * 100);
 }
 
+function getAssignedCell(app?: Application | null): string | undefined {
+  return app?.assignedDepartment || app?.assignedCell || undefined;
+}
+
+function getStepTitle(step: ApplicationStatus, app?: Application | null): string {
+  if (step === 'Assigned to Respective Cell') {
+    const cell = getAssignedCell(app);
+    if (cell) return `Assigned to ${cell}`;
+  }
+  return step;
+}
+
+function getStepDescription(step: ApplicationStatus, app?: Application | null, notes?: string): string {
+  const cell = getAssignedCell(app);
+  if (step === 'Assigned to Respective Cell' && cell) {
+    if (!notes || notes.toLowerCase().includes('respective cell') || notes.trim() === 'Assigned to Respective Cell') {
+      return `You have been assigned to ${cell}.`;
+    }
+  }
+  if (notes) return notes;
+  if (step === 'Assigned to Respective Cell' && cell) {
+    return `You have been assigned to ${cell}.`;
+  }
+  return STATUS_DESCRIPTIONS[step] || '';
+}
+
+
+
 const ApplicationStatus: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string>('');
+  const [downloadingAttendance, setDownloadingAttendance] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -75,6 +107,23 @@ const ApplicationStatus: React.FC = () => {
   const effectiveSteps = isRejected
     ? ['Applied', 'Under Review', 'Rejected'] as ApplicationStatus[]
     : TIMELINE_STEPS;
+  const showAttendanceDownload = currentApp ? isAttendanceFormAvailable(currentApp.status) : false;
+
+  const handleDownloadTrainingForm = async () => {
+    if (!currentApp) return;
+    setDownloadingAttendance(true);
+    try {
+      await documentService.download(
+        currentApp.id,
+        'training-application',
+        `Training_Application_${currentApp.id}.pdf`
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Training application form is not available yet.');
+    } finally {
+      setDownloadingAttendance(false);
+    }
+  };
 
   return (
     <div>
@@ -134,7 +183,7 @@ const ApplicationStatus: React.FC = () => {
                   <div className="text-right">
                     <StatusBadge status={currentApp.status} />
                     <p className="text-xs text-zinc-400 mt-1">
-                      Applied: {new Date(currentApp.appliedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      Applied: {formatDate(currentApp.appliedDate)}
                     </p>
                   </div>
                 </div>
@@ -150,9 +199,24 @@ const ApplicationStatus: React.FC = () => {
                     className="h-2.5 bg-zinc-100 [&>div]:bg-blue-600"
                   />
                   <p className="text-xs text-zinc-500 mt-2 leading-relaxed">
-                    {STATUS_DESCRIPTIONS[currentApp.status]}
+                    {getStepDescription(currentApp.status, currentApp)}
                   </p>
                 </div>
+
+                {/* Attendance form download — shown only after internship starts */}
+                {showAttendanceDownload && (
+                  <div className="mt-4 pt-4 border-t border-zinc-100">
+                    <Button
+                      variant="outline"
+                      onClick={handleDownloadTrainingForm}
+                      disabled={downloadingAttendance}
+                      className="gap-2 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800"
+                    >
+                      <FileText size={16} />
+                      {downloadingAttendance ? 'Downloading…' : 'Download Training Attendance Application Form'}
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Timeline */}
@@ -201,7 +265,7 @@ const ApplicationStatus: React.FC = () => {
                               <p className={`font-semibold text-sm ${
                                 isCurrent && !isReject ? 'text-blue-700' : isReject ? 'text-red-700' : 'text-zinc-900'
                               }`}>
-                                {step}
+                                {getStepTitle(step, currentApp)}
                                 {isCurrent && (
                                   <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
                                     Current
@@ -211,26 +275,37 @@ const ApplicationStatus: React.FC = () => {
                               {timelineEntry && (
                                 <div className="flex items-center gap-1 text-xs text-zinc-400">
                                   <Clock size={11} />
-                                  {new Date(timelineEntry.timestamp).toLocaleString('en-IN', {
-                                    day: 'numeric', month: 'short', year: 'numeric',
-                                    hour: '2-digit', minute: '2-digit',
-                                  })}
+                                  {formatDateTime(timelineEntry.timestamp)}
                                 </div>
                               )}
                             </div>
-                            {timelineEntry?.notes && (
+                            {timelineEntry?.notes ? (
                               <p className="text-sm text-zinc-600 bg-zinc-50 rounded-lg px-3 py-2 border border-zinc-100 leading-relaxed">
-                                {timelineEntry.notes}
+                                {getStepDescription(step, currentApp, timelineEntry.notes)}
                               </p>
-                            )}
+                            ) : null}
                             {/* Completed/current steps without a recorded timeline
                                 entry show their meaning — never a misleading
                                 "Pending update" under a green check. */}
                             {!timelineEntry && !isFuture && (
-                              <p className="text-xs text-zinc-500">{STATUS_DESCRIPTIONS[step]}</p>
+                              <p className="text-xs text-zinc-500">{getStepDescription(step, currentApp)}</p>
                             )}
                             {isFuture && (
-                              <p className="text-xs text-zinc-400">{STATUS_DESCRIPTIONS[step]}</p>
+                              <p className="text-xs text-zinc-400">{getStepDescription(step, currentApp)}</p>
+                            )}
+                            {step === 'Internship Starts' && isAttendanceFormAvailable(currentApp.status) && (
+                              <div className="mt-2.5">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={handleDownloadTrainingForm}
+                                  disabled={downloadingAttendance}
+                                  className="h-8 gap-1.5 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 text-xs font-medium"
+                                >
+                                  <FileText size={14} />
+                                  {downloadingAttendance ? 'Downloading…' : 'Download Attendance Form'}
+                                </Button>
+                              </div>
                             )}
                           </div>
                         </motion.div>

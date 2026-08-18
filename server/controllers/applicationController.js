@@ -2,6 +2,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const Application = require('../models/Application');
 const Advertisement = require('../models/Advertisement');
+const Notification = require('../models/Notification');
 const { loadIdentity, studentMatch } = require('../utils/identity');
 const { toApplication } = require('../utils/mappers');
 
@@ -81,6 +82,36 @@ const create = asyncHandler(async (req, res) => {
       },
     ],
   });
+
+  // Create a notification so the student can see this event in the
+  // Notifications section immediately. Non-blocking: a failure here must
+  // never prevent the application response from being sent.
+  try {
+    const recipientId = identity.student ? identity.student.id : identity.user.id;
+    const enrollmentNumber = identity.student
+      ? identity.student.enrollmentNumber
+      : (formData && formData.enrollmentNumber) || '';
+    const postName = ad.title || ad.internshipTitle || ad.postName || 'Internship';
+    await Notification.create({
+      id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      recipientId,
+      userId: identity.user.id,
+      studentId: recipientId,
+      enrollmentNumber,
+      title: 'Application Submitted',
+      message: `Your application for "${postName}" has been submitted successfully. Application ID: ${appId}`,
+      type: 'success',
+      read: false,
+      createdAt: now,
+      date: now,
+      link: '/status',
+      applicationId: appId,
+      status: 'Applied',
+    });
+  } catch (notifErr) {
+    // Notification creation is best-effort — log but don't fail the request.
+    console.warn('[applicationController] Failed to create submission notification:', notifErr && notifErr.message);
+  }
 
   res.json({ success: true, data: toApplication(newDoc.toObject(), ad) });
 });
