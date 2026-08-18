@@ -52,7 +52,7 @@ const MyApplications: React.FC = () => {
   const handleDownloadPDF = async (app: Application) => {
     setDownloadingId(app.id);
     try {
-      await documentService.download(app.id, 'application-pdf', `PU_Application_${app.id}.pdf`);
+      await documentService.download(app.id, 'application-pdf', `PU_Application_${app.id}.pdf`, app);
       toast.success(`PDF downloaded: PU_Application_${app.id}.pdf`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Download failed. Please try again.');
