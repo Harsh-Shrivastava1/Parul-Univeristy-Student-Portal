@@ -51,7 +51,7 @@ const registerSchema = z
     institute: z.string().min(1, 'Select your institute'),
     department: z.string().min(1, 'Select your department'),
     semester: z.string().min(1, 'Select your semester'),
-    email: z.string().email('Enter a valid email address'),
+    email: z.string().regex(/^[A-Za-z0-9._%+-]+@paruluniversity\.ac\.in$/i, 'Use your official Parul University email (@paruluniversity.ac.in)'),
     password: z
       .string()
       .min(8, 'Password must be at least 8 characters')

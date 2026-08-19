@@ -84,6 +84,10 @@ function validateRegister(p) {
   if (!sem || sem < 1 || sem > 8) return 'Please select a valid semester.';
   const email = String(p.email || '').trim();
   if (!isEmail(email) || email.length > MAX.email) return 'Enter a valid email address.';
+  // Students may only self-register with an official Parul University email.
+  if (!/@paruluniversity\.ac\.in$/i.test(email)) {
+    return 'Only official Parul University email addresses (@paruluniversity.ac.in) are allowed.';
+  }
   const pw = String(p.password || '');
   if (pw.length < 8 || pw.length > MAX.password || !/[A-Za-z]/.test(pw) || !/[0-9]/.test(pw)) {
     return 'Password must be 8-200 characters and include a letter and a number.';
