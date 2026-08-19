@@ -49,7 +49,7 @@ const schema = z.object({
   fatherName: z.string().optional(),
   motherName: z.string().optional(),
   dateOfBirth: z.string().optional(),
-  gender: z.string().optional(),
+  gender: z.string().min(1, 'Gender is required'),
   languagesKnown: z.string().min(1, 'At least one language required'),
   sem1: spiNum, sem2: spiNum, sem3: spiNum, sem4: spiNum,
   sem5: spiNum, sem6: spiNum, sem7: spiNum, sem8: spiNum,
@@ -486,8 +486,13 @@ const ApplicationForm: React.FC = () => {
             <Field label="Date of Birth" error={errors.dateOfBirth?.message}>
               <Input {...register('dateOfBirth')} type="date" className={inp} />
             </Field>
-            <Field label="Gender" error={errors.gender?.message}>
-              <Input {...register('gender')} placeholder="Male / Female / Other" className={inp} />
+            <Field label="Gender" required error={errors.gender?.message}>
+              <select {...register('gender')} className={`${inp} appearance-none cursor-pointer`}>
+                <option value="">Select gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
             </Field>
           </div>
 
