@@ -38,10 +38,12 @@ const register = asyncHandler(async (req, res) => {
 
 // POST /api/auth/login  (public)
 const login = asyncHandler(async (req, res) => {
-  const { enrollmentNumber, password } = req.body || {};
+  const { enrollmentNumber, email, identifier, password } = req.body || {};
+  // Accept enrollment number OR college email in a single identifier field.
+  const loginId = identifier || enrollmentNumber || email;
   const ip = clientIp(req);
   try {
-    const profile = await authService.login(enrollmentNumber, password);
+    const profile = await authService.login(loginId, password);
     const token = issueSession(res, profile);
     // Student logins are intentionally NOT audited (routine, high-volume, low
     // value). Registration / password-change / failed-login remain audited.
@@ -51,7 +53,7 @@ const login = asyncHandler(async (req, res) => {
       action: 'AUTH_LOGIN_FAILED',
       entity: 'auth',
       ip,
-      meta: { enrollmentNumber: typeof enrollmentNumber === 'string' ? enrollmentNumber.slice(0, 40) : null },
+      meta: { identifier: typeof loginId === 'string' ? loginId.slice(0, 60) : null },
     });
     throw err;
   }

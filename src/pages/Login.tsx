@@ -20,7 +20,7 @@ import { Loader2, Eye, EyeOff, AlertCircle, Lock, User as UserIcon, ArrowRight }
 import { motion } from 'framer-motion';
 
 const loginSchema = z.object({
-  enrollmentNumber: z.string().min(1, 'Enrollment number is required'),
+  enrollmentNumber: z.string().min(1, 'Enrollment number or email is required'),
   password: z.string().min(1, 'Password is required'),
   rememberMe: z.boolean().default(false).optional(),
 });
@@ -47,7 +47,7 @@ const Login: React.FC = () => {
       login(user);
       navigate('/');
     } catch {
-      setLoginError('Invalid enrollment number or password.');
+      setLoginError('Invalid credentials. Check your enrollment number / email and password.');
     } finally {
       setIsLoading(false);
     }
@@ -78,14 +78,14 @@ const Login: React.FC = () => {
             name="enrollmentNumber"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-zinc-700 font-semibold text-xs uppercase tracking-wider">Enrollment Number</FormLabel>
+                <FormLabel className="text-zinc-700 font-semibold text-xs uppercase tracking-wider">Enrollment Number / Email</FormLabel>
                 <FormControl>
                   <div className="relative group">
                     <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-blue-600 transition-colors">
                       <UserIcon size={18} />
                     </div>
                     <Input
-                      placeholder="e.g. 2403031570042"
+                      placeholder="Enrollment no. or name@paruluniversity.ac.in"
                       {...field}
                       disabled={isLoading}
                       className="h-11 pl-10 border-zinc-200 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all rounded-xl shadow-sm bg-zinc-50"

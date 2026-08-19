@@ -241,29 +241,51 @@ async function register(payload) {
 }
 
 /** Student login by enrollment number + password. */
-async function login(enrollmentNumber, password) {
-  if (!enrollmentNumber || !password) {
-    throw new ApiError(400, 'Enrollment number and password are required.');
+async function login(identifier, password) {
+  if (!identifier || !password) {
+    throw new ApiError(400, 'Enrollment number or email and password are required.');
   }
-  const enrollment = String(enrollmentNumber).trim();
+  const id = String(identifier).trim();
+  const isEmailId = id.includes('@');
 
-  const student = await Student.findOne({ enrollmentNumber: enrollment }).lean();
-  const user = student
-    ? await User.findOne({
+  let student = null;
+  let user = null;
+
+  if (isEmailId) {
+    // Email login (college mail id). Match on either the user or student doc.
+    const rx = new RegExp(`^${escapeRegex(id)}$`, 'i');
+    user = await User.findOne({ role: 'student', email: rx }).lean();
+    student = await Student.findOne(
+      user
+        ? { $or: [{ id: user.studentId }, { userId: user.id }, { email: rx }] }
+        : { email: rx },
+    ).lean();
+    if (student && !user) {
+      user = await User.findOne({
         role: 'student',
         $or: [{ id: student.userId }, { studentId: student.id }],
-      }).lean()
-    : null;
+      }).lean();
+    }
+  } else {
+    // Enrollment-number login.
+    student = await Student.findOne({ enrollmentNumber: id }).lean();
+    user = student
+      ? await User.findOne({
+          role: 'student',
+          $or: [{ id: student.userId }, { studentId: student.id }],
+        }).lean()
+      : null;
+  }
 
   // Uniform error to avoid leaking which field was wrong.
   if (!student || !user || user.isDeleted) {
-    throw new ApiError(401, 'Invalid enrollment number or password.');
+    throw new ApiError(401, 'Invalid credentials.');
   }
   if (user.status !== 'active') {
     throw new ApiError(403, 'Your account has been deactivated. Please contact administration.');
   }
   const ok = await comparePassword(String(password), user.passwordHash);
-  if (!ok) throw new ApiError(401, 'Invalid enrollment number or password.');
+  if (!ok) throw new ApiError(401, 'Invalid credentials.');
 
   await User.updateOne({ id: user.id }, { $set: { lastLoginAt: new Date().toISOString() } });
   return toProfile(user, student);
