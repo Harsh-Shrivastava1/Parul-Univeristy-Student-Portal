@@ -136,7 +136,91 @@ const STATUS_MESSAGES = {
     message: (app) => `Your full internship journey for "${appTitle(app)}" is now complete. Collect your certificate from the Internship Cell office.`,
     type: 'success',
   },
+  'Rejected by Department': {
+    title: 'Not Selected by Department',
+    message: (app) => `The department did not select your application for "${appTitle(app)}" this time. Other opportunities are still available.`,
+    type: 'error',
+  },
+  Terminated: {
+    title: 'Internship Terminated',
+    message: (app) => `Your internship for "${appTitle(app)}" has been terminated. Please contact the Internship Cell for more details.`,
+    type: 'error',
+  },
 };
+
+/** Navigation target for a given status. */
+function linkForStatus(status) {
+  if (['Internship Starts', 'Internship Running', 'Ready To Join', 'Joined',
+       'Internship Completed', 'Final Completion'].includes(status)) {
+    return '/profile'; // attendance form / documents become available
+  }
+  return '/status';
+}
+
+/**
+ * Build a Notification document for an application at a given status, or null if
+ * the status has no message template. Shared by the change-stream watcher and
+ * the on-fetch reconciliation so both produce identical notifications.
+ */
+function buildNotificationDoc(app, status, when) {
+  const info = STATUS_MESSAGES[status];
+  if (!info || !app || !app.id) return null;
+  const keys = recipientKeys(app);
+  const primaryKey = keys[0] || '';
+  const ts = when || new Date().toISOString();
+  return {
+    id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    recipientId: primaryKey,
+    userId: app.userId || primaryKey,
+    studentId: app.studentId || primaryKey,
+    enrollmentNumber: app.enrollmentNumber || '',
+    title: info.title,
+    message: typeof info.message === 'function' ? info.message(app) : info.message,
+    type: info.type,
+    read: false,
+    createdAt: ts,
+    date: ts,
+    link: linkForStatus(status),
+    applicationId: app.id,
+    status,
+  };
+}
+
+/** True if a notification for (applicationId, status) already exists for this student. */
+async function notificationExists(app, status) {
+  const keys = recipientKeys(app);
+  const enrollment = app.enrollmentNumber || '';
+  const found = await Notification.findOne({
+    applicationId: app.id,
+    status,
+    $or: [
+      { recipientId: { $in: keys } },
+      { userId: { $in: keys } },
+      { studentId: { $in: keys } },
+      ...(enrollment ? [{ enrollmentNumber: enrollment }] : []),
+    ],
+  }).lean();
+  return !!found;
+}
+
+/**
+ * Safety net for missed change-stream events (Atlas M0 streams can drop): given
+ * the student's application docs, ensure a notification exists for each app's
+ * CURRENT status. Called on every notifications fetch — idempotent and cheap.
+ */
+async function reconcileNotifications(apps) {
+  for (const app of apps || []) {
+    const status = String(app.status || app.applicationStatus || '');
+    if (!status || !STATUS_MESSAGES[status] || !app.id) continue;
+    try {
+      if (await notificationExists(app, status)) continue;
+      const doc = buildNotificationDoc(app, status, app.updatedAt || app.appliedDate);
+      if (doc) await Notification.create(doc);
+    } catch (err) {
+      console.warn('[appWatcher] reconcile failed for app', app.id, err && err.message);
+    }
+  }
+}
 
 function appTitle(app) {
   return (
@@ -182,74 +266,35 @@ function startApplicationWatcher() {
         const doc = change.fullDocument;
         if (!doc) return;
 
-        const newStatus = doc.status || doc.applicationStatus;
-        if (!newStatus) return;
-
-        const info = STATUS_MESSAGES[newStatus];
-        if (!info) return; // unknown status — skip silently
+        // Prefer the status field that actually changed in THIS event (the shared
+        // doc carries both `status` and `applicationStatus`, sometimes out of
+        // sync). Fall back to the live doc values for replace ops.
+        const updated = (change.updateDescription && change.updateDescription.updatedFields) || {};
+        const newStatus =
+          updated.status || updated.applicationStatus || doc.status || doc.applicationStatus;
+        if (!newStatus || !STATUS_MESSAGES[newStatus]) return; // unknown/none — skip
 
         // De-duplicate: skip if a notification for this (applicationId, status)
-        // was already created (e.g. by TEC / Coordinator backend).
-        const appId = doc.id;
-        const keys = recipientKeys(doc);
-        const enrollment = doc.enrollmentNumber || '';
+        // already exists (written by another portal or a previous event).
+        if (await notificationExists(doc, newStatus)) return;
 
-        const existing = await Notification.findOne({
-          applicationId: appId,
-          status: newStatus,
-          $or: [
-            { recipientId: { $in: keys } },
-            { userId: { $in: keys } },
-            { studentId: { $in: keys } },
-            ...(enrollment ? [{ enrollmentNumber: enrollment }] : []),
-          ],
-        }).lean();
-
-        if (existing) return; // already notified — skip
-
-        const now = new Date().toISOString();
-        const primaryKey = keys[0] || '';
-
-        // Determine the navigation link based on status.
-        let link = '/notifications';
-        if (['Internship Starts', 'Internship Running', 'Ready To Join', 'Joined',
-             'Internship Completed', 'Final Completion'].includes(newStatus)) {
-          link = '/profile'; // attendance form becomes available
-        } else if (['Applied', 'Under Review', 'Pending', 'Shortlisted',
-                    'Interview Scheduled', 'Interview Completed', 'Selected',
-                    'Selected For Training', 'Assigned to Respective Cell',
-                    'Training Assigned', 'Training In Progress', 'Training Starts',
-                    'Training Completed', 'Returned to TEC Cell', 'Rejected'].includes(newStatus)) {
-          link = '/status';
-        }
-
-        await Notification.create({
-          id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-          recipientId: primaryKey,
-          userId: doc.userId || primaryKey,
-          studentId: doc.studentId || primaryKey,
-          enrollmentNumber: enrollment,
-          title: info.title,
-          message: typeof info.message === 'function' ? info.message(doc) : info.message,
-          type: info.type,
-          read: false,
-          createdAt: now,
-          date: now,
-          link,
-          applicationId: appId,
-          status: newStatus,
-        });
-
-        console.log(`[appWatcher] Created notification: ${info.title} for app ${appId} (status: ${newStatus})`);
+        const notifDoc = buildNotificationDoc(doc, newStatus);
+        if (!notifDoc) return;
+        await Notification.create(notifDoc);
+        console.log(`[appWatcher] Created notification: ${notifDoc.title} for app ${doc.id} (status: ${newStatus})`);
       } catch (err) {
         console.warn('[appWatcher] Failed to create notification from change event:', err && err.message);
       }
     });
 
-    stream.on('error', (err) => {
-      // On Atlas free tier or replica sets, change streams may disconnect. Log + continue.
-      console.warn('[appWatcher] Change stream error:', err && err.message);
-    });
+    const scheduleRestart = (why) => {
+      console.warn(`[appWatcher] Change stream ${why} — restarting in 5s.`);
+      try { stream.close(); } catch { /* ignore */ }
+      setTimeout(() => startApplicationWatcher(), 5000);
+    };
+    // Atlas M0 change streams can drop; auto-resume so notifications keep flowing.
+    stream.on('error', (err) => scheduleRestart(`error (${err && err.message})`));
+    stream.on('close', () => scheduleRestart('closed'));
 
     console.log('🔔  Application status watcher started — notifications will be auto-created for all workflow events.');
   } catch (err) {
@@ -260,4 +305,4 @@ function startApplicationWatcher() {
   }
 }
 
-module.exports = { startApplicationWatcher };
+module.exports = { startApplicationWatcher, reconcileNotifications };

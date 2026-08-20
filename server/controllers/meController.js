@@ -11,6 +11,7 @@ const { validateProfilePatch } = require('../utils/validation');
 const { clientIp } = require('../utils/http');
 const { loadIdentity, studentKeys, studentMatch } = require('../utils/identity');
 const { toApplication, toTraining, toNotification } = require('../utils/mappers');
+const { reconcileNotifications } = require('../utils/applicationWatcher');
 
 // Personal fields the student is allowed to edit. Enrollment / department /
 // semester / academic data are intentionally excluded (immutable / not owned).
@@ -109,6 +110,15 @@ const getTraining = asyncHandler(async (req, res) => {
 const listNotifications = asyncHandler(async (req, res) => {
   const identity = await loadIdentity(req.user.sub);
   if (!identity) throw new ApiError(404, 'Account not found.');
+
+  // Safety net: ensure a notification exists for the CURRENT status of each of
+  // the student's applications (backfills any events the change stream missed).
+  try {
+    const myApps = await Application.find(studentMatch(identity.user, identity.student)).lean();
+    await reconcileNotifications(myApps);
+  } catch (err) {
+    console.warn('[notifications] reconcile skipped:', err && err.message);
+  }
 
   const keys = studentKeys(identity.user, identity.student);
   const enrollment = identity.student && identity.student.enrollmentNumber;
