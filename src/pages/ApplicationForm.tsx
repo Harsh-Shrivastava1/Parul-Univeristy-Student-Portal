@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import {
   Loader2, Send, ArrowLeft, CheckCircle2, RotateCcw,
   AlertCircle, User, GraduationCap, Languages, Briefcase,
-  MessageSquare, Users2, ShieldCheck, PenLine, Info,
+  MessageSquare, Users2, ShieldCheck, PenLine, Info, ChevronDown,
 } from 'lucide-react';
 import { internshipService } from '../services/internshipService';
 import { applicationService } from '../services/applicationService';
@@ -487,12 +487,15 @@ const ApplicationForm: React.FC = () => {
               <Input {...register('dateOfBirth')} type="date" className={inp} />
             </Field>
             <Field label="Gender" required error={errors.gender?.message}>
-              <select {...register('gender')} className={`${inp} appearance-none cursor-pointer`}>
-                <option value="">Select gender</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-              </select>
+              <div className="relative">
+                <select {...register('gender')} className={`${inp} appearance-none cursor-pointer pr-9`}>
+                  <option value="">Select gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+                <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+              </div>
             </Field>
           </div>
 
