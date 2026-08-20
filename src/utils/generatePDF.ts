@@ -51,9 +51,11 @@ export async function generateApplicationPDF(app: Application): Promise<void> {
     img.src = '/pu-logo.png';
     await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; });
     const imgRatio = img.width / img.height;
-    const imgHeight = 20; // Original logo height
+    const imgHeight = 23; // slightly larger logo
     const imgWidth = imgHeight * imgRatio;
-    doc.addImage(img, 'PNG', lm, 5, imgWidth, imgHeight);
+    // y=1 (moved up from 5) so the logo's vertical centre aligns with the
+    // "Internship Cell" / "Candidate Information Form" text block.
+    doc.addImage(img, 'PNG', lm, 1, imgWidth, imgHeight);
     textStartX = lm + imgWidth + 8;
   } catch {
     doc.setFont('helvetica', 'bold');
