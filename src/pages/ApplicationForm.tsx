@@ -488,7 +488,7 @@ const ApplicationForm: React.FC = () => {
             </Field>
             <Field label="Gender" required error={errors.gender?.message}>
               <div className="relative">
-                <select {...register('gender')} className={`${inp} appearance-none cursor-pointer pr-9`}>
+                <select {...register('gender')} className={`${inp} border appearance-none cursor-pointer pr-9`}>
                   <option value="">Select gender</option>
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
