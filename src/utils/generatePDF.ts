@@ -284,7 +284,7 @@ export async function generateApplicationPDF(app: Application): Promise<void> {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
   doc.setTextColor(150, 150, 150);
-  doc.text('Parul University Internship Portal — Confidential Document', W / 2, H - 5.5, { align: 'center' });
+  doc.text('Parul University Internship Portal', W / 2, H - 5.5, { align: 'center' });
   doc.text(`Generated: ${formatDate(new Date())}  |  ${app.id}`, W / 2, H - 2, { align: 'center' });
 
   doc.save(`PU_Application_${app.id}.pdf`);
