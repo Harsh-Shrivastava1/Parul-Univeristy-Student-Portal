@@ -91,6 +91,7 @@ const ApplicationStatus: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string>('');
   const [downloadingAttendance, setDownloadingAttendance] = useState(false);
+  const [downloadingApp, setDownloadingApp] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -108,6 +109,25 @@ const ApplicationStatus: React.FC = () => {
     ? ['Applied', 'Under Review', 'Rejected'] as ApplicationStatus[]
     : TIMELINE_STEPS;
   const showAttendanceDownload = currentApp ? isAttendanceFormAvailable(currentApp.status) : false;
+
+  // The filled candidate application form is regenerated client-side from the
+  // stored formData — available from the moment the application is submitted.
+  const handleDownloadApplicationForm = async () => {
+    if (!currentApp) return;
+    setDownloadingApp(true);
+    try {
+      await documentService.download(
+        currentApp.id,
+        'application-pdf',
+        `Application_Form_${currentApp.id}.pdf`,
+        currentApp,
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not generate the application form.');
+    } finally {
+      setDownloadingApp(false);
+    }
+  };
 
   const handleDownloadTrainingForm = async () => {
     if (!currentApp) return;
@@ -292,6 +312,20 @@ const ApplicationStatus: React.FC = () => {
                             )}
                             {isFuture && (
                               <p className="text-xs text-zinc-400">{getStepDescription(step, currentApp)}</p>
+                            )}
+                            {step === 'Applied' && (
+                              <div className="mt-2.5">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={handleDownloadApplicationForm}
+                                  disabled={downloadingApp}
+                                  className="h-8 gap-1.5 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 text-xs font-medium"
+                                >
+                                  <FileText size={14} />
+                                  {downloadingApp ? 'Downloading…' : 'Download Application Form'}
+                                </Button>
+                              </div>
                             )}
                             {step === 'Internship Starts' && isAttendanceFormAvailable(currentApp.status) && (
                               <div className="mt-2.5">
