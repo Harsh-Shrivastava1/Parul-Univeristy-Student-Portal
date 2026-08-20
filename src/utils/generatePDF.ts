@@ -24,11 +24,19 @@ function kv(doc: any, k: string, v: string, x: number, y: number, kw = 35, vw = 
   doc.setTextColor(80, 80, 80);
   doc.text(k, x, y);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
   doc.setTextColor(20, 20, 20);
-  const lines = doc.splitTextToSize(v || '—', vw);
-  doc.text(lines, x + kw, y);
-  return y + lines.length * 4.5;
+  const val = v || '—';
+  // Keep the value on ONE line: shrink the font (down to 6pt) until it fits the
+  // available width, so long values like a full email never wrap.
+  let fs = 9;
+  doc.setFontSize(fs);
+  while (fs > 6 && doc.getTextWidth(val) > vw) {
+    fs -= 0.5;
+    doc.setFontSize(fs);
+  }
+  doc.text(val, x + kw, y);
+  doc.setFontSize(9);
+  return y + 4.5;
 }
 
 export async function generateApplicationPDF(app: Application): Promise<void> {
