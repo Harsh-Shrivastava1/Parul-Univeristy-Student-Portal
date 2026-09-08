@@ -63,6 +63,11 @@ const env = {
       process.env.MAIL_FROM ||
       process.env.EMAIL_FROM ||
       'Internship Management System <no-reply@icmp.local>',
+    // SMTP connection-pool throughput (tune via .env; raise for university SMTP).
+    poolMaxConnections: parseInt(process.env.EMAIL_MAX_CONNECTIONS || '15', 10),
+    poolMaxMessages: parseInt(process.env.EMAIL_MAX_MESSAGES || '300', 10),
+    poolRateDelta: parseInt(process.env.EMAIL_RATE_DELTA || '1000', 10),
+    poolRateLimit: parseInt(process.env.EMAIL_RATE_LIMIT || '25', 10),
     provider: process.env.SMTP_HOST ? 'gmail-smtp' : 'ethereal',
   },
 };
