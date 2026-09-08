@@ -24,8 +24,14 @@ async function getTransporter() {
         port: env.email.port || 587,
         secure: env.email.secure,
         auth: { user: env.email.user, pass: env.email.pass },
+        // Reuse SMTP connections + rate-limit for fast multi-recipient sends.
+        pool: true,
+        maxConnections: 5,
+        maxMessages: 100,
+        rateDelta: 1000,
+        rateLimit: 6,
       });
-      logger.info('Email transport: configured SMTP', { host: env.email.host });
+      logger.info('Email transport: configured SMTP (pooled)', { host: env.email.host });
     } else {
       const testAccount = await nodemailer.createTestAccount();
       transporter = nodemailer.createTransport({
