@@ -7,10 +7,12 @@ const rateLimit = require('express-rate-limit');
  */
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  // Students register/log in from shared campus NAT (many users behind one IP),
-  // so a very low cap locks out legitimate cohorts. 100/15min per IP still caps
-  // brute force while comfortably absorbing a class registering together.
-  max: 100, // per IP per window
+  // Students register/log in from a shared campus NAT (the whole campus is one
+  // public IP), so the cap must absorb a peak cohort logging in together while
+  // still stopping brute force. 300/15min per IP is comfortable for realistic
+  // login volume (logins are infrequent — a login yields a 15min access token +
+  // 7day refresh) yet trivially blocks credential stuffing against bcrypt(12).
+  max: 300, // per IP per window
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: 'Too many attempts. Please try again later.' },
