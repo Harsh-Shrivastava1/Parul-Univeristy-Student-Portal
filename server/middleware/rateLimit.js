@@ -1,4 +1,5 @@
 const rateLimit = require('express-rate-limit');
+const { MongoRateStore } = require('./mongoRateStore');
 
 /**
  * Rate limiter for authentication endpoints (login / register / change-password).
@@ -15,6 +16,9 @@ const authLimiter = rateLimit({
   max: 500, // per IP per window
   standardHeaders: true,
   legacyHeaders: false,
+  // Shared count across PM2 cluster workers (no Redis). Fails open on DB issues.
+  store: new MongoRateStore('student-auth'),
+  passOnStoreError: true,
   message: { success: false, error: 'Too many attempts. Please try again later.' },
 });
 
