@@ -26,10 +26,10 @@ async function getTransporter() {
         auth: { user: env.email.user, pass: env.email.pass },
         // Reuse SMTP connections + rate-limit for fast multi-recipient sends.
         pool: true,
-        maxConnections: 5,
-        maxMessages: 100,
+        maxConnections: 10,
+        maxMessages: 200,
         rateDelta: 1000,
-        rateLimit: 6,
+        rateLimit: 14,
       });
       logger.info('Email transport: configured SMTP (pooled)', { host: env.email.host });
     } else {
