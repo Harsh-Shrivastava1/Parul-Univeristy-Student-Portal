@@ -17,9 +17,17 @@ const studentSchema = new Schema(
     userId: { type: String, default: null, index: true }, // link -> users.id
     studentName: { type: String },
     name: { type: String },
-    // Unique at the DB level — the authoritative guard against duplicate
-    // enrollment registration (app-level checks alone are racy). Immutable.
-    enrollmentNumber: { type: String, required: true, unique: true, index: true },
+    // Set at registration. NULLABLE because an Admin can RELEASE a claim (see
+    // the Admin portal's enrollment command) — a released row legitimately
+    // holds null, and several may do so at once. Registration itself still
+    // requires a value; that check lives in services/authService.js.
+    //
+    // Uniqueness is enforced by the partial index declared below, NOT by
+    // `unique: true` here. Two reasons: a plain unique index would reject the
+    // second released row, and Mongoose never alters an index that already
+    // exists — the field carried `unique: true` for a long time while the
+    // deployed index had no such flag, so nothing was actually enforced.
+    enrollmentNumber: { type: String, default: null, index: true },
     institute: { type: String, default: '' }, // immutable after registration (Admin-only edit)
     department: { type: String }, // immutable after registration
     semester: { type: Number }, // immutable after registration
@@ -64,6 +72,18 @@ const studentSchema = new Schema(
       },
     },
   }
+);
+
+// Uniqueness on real enrollment numbers only. The partial filter keeps released
+// rows (null) out of the index, so any number of accounts may sit released while
+// no two accounts can hold the same number.
+studentSchema.index(
+  { enrollmentNumber: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { enrollmentNumber: { $type: 'string' } },
+    name: 'enrollmentNumber_unique',
+  },
 );
 
 module.exports = models.Student || model('Student', studentSchema, 'students');
