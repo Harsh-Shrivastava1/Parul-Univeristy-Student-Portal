@@ -22,11 +22,12 @@ export interface RegisterPayload {
 export const authService = {
   // Self-registration → backend creates users+students atomically and
   // auto-issues the session cookies. Returns the merged student profile.
-  register: async (payload: RegisterPayload): Promise<User> => {
-    const data = await api.post<User & { token?: string }>('/auth/register', payload);
-    if (data?.token) setAccessToken(data.token);
-    return data;
-  },
+  /**
+   * Create the account. Returns NO session: the address has to be verified
+   * first, so the caller sends the student to check their mail.
+   */
+  register: async (payload: RegisterPayload): Promise<{ email: string; message: string }> =>
+    api.post<{ email: string; message: string }>('/auth/register', payload),
 
   login: async (enrollmentNumber: string, password: string): Promise<User> => {
     const data = await api.post<User & { token?: string }>('/auth/login', { enrollmentNumber, password });
@@ -43,6 +44,17 @@ export const authService = {
   /** Consume a single-use reset link and set the new password. */
   resetPassword: async (token: string, password: string): Promise<void> => {
     await api.post<void>('/auth/reset-password', { token, password });
+  },
+
+  /** Consume the emailed verification link. Single-use. */
+  verifyEmail: async (token: string): Promise<void> => {
+    await api.post<void>('/auth/verify-email', { token });
+  },
+
+  /** Ask for a fresh verification link. Always resolves — the server answer is
+   *  deliberately the same whether or not the address is registered. */
+  resendVerification: async (email: string): Promise<void> => {
+    await api.post<void>('/auth/resend-verification', { email });
   },
 
   // Self-service password change (authenticated): current (or temp) password

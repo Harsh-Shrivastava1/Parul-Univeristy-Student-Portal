@@ -32,6 +32,19 @@ const userSchema = new Schema(
      */
     resetTokenHash: { type: String, default: null },
     resetTokenExpiresAt: { type: String, default: null },
+    /**
+     * Email ownership proof.
+     *
+     * Deliberately tri-state: `false` blocks sign-in, but MISSING is treated as
+     * verified. Accounts created before this existed are grandfathered rather
+     * than locked out, which is the safe direction for a live system.
+     *
+     * Like the reset fields, these MUST be declared — the schema is strict, so
+     * an undeclared field is silently dropped on write.
+     */
+    emailVerified: { type: Boolean, default: false },
+    verifyTokenHash: { type: String, default: null },
+    verifyTokenExpiresAt: { type: String, default: null },
   },
   {
     versionKey: false,

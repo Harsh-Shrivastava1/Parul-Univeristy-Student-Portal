@@ -26,6 +26,18 @@ function escapeRegex(s) {
  */
 /** Password-reset links are short-lived; a stale link must not stay usable. */
 const RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
+/** Verification links last a day: people check college mail on their own schedule. */
+const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+
+/** Mint a link token: the raw value is emailed, only its hash is stored. */
+function mintToken(ttlMs) {
+  const raw = crypto.randomBytes(32).toString('hex');
+  return {
+    raw,
+    hash: crypto.createHash('sha256').update(raw).digest('hex'),
+    expiresAt: new Date(Date.now() + ttlMs).toISOString(),
+  };
+}
 
 
 /** Merged user + student view matching the Student Portal `User` type. */
@@ -158,6 +170,7 @@ async function register(payload) {
 
   const now = new Date().toISOString();
   const passwordHash = await hashPassword(String(payload.password));
+  const verifyToken = mintToken(VERIFY_TOKEN_TTL_MS);
   const studentDocId = genId('ST');
   const userDocId = genId('USR');
   const fullName = String(payload.fullName).trim();
@@ -191,6 +204,11 @@ async function register(payload) {
     role: 'student',
     studentId: studentDocId,
     status: 'active',
+    // The address is not proven yet. Login is gated on this, not on `status`,
+    // so the Admin portal's activation semantics stay untouched.
+    emailVerified: false,
+    verifyTokenHash: verifyToken.hash,
+    verifyTokenExpiresAt: verifyToken.expiresAt,
     passwordHash,
     lastLoginAt: null,
     isDeleted: false,
@@ -216,8 +234,9 @@ async function register(payload) {
   const user = await User.findOne({ id: userDocId }).lean();
   const student = await Student.findOne({ id: studentDocId }).lean();
 
-  // Fire-and-forget welcome email. Best-effort: never awaited, never throws,
-  // so a mail failure can never block or roll back the registration.
+  // Fire-and-forget verification email. Best-effort: never awaited, never
+  // throws, so a mail failure can never block or roll back the registration —
+  // the account simply stays unverified and the link can be resent.
   void sendTemplateEmail({
     to: email,
     toName: fullName,
@@ -227,7 +246,8 @@ async function register(payload) {
       email,
       enrollmentNumber,
       department: payload.department,
-      loginUrl: env.loginUrl || env.frontendOrigin,
+      verifyUrl: verifyLink(verifyToken.raw),
+      expiresInHours: Math.round(VERIFY_TOKEN_TTL_MS / 3600000),
     },
   }).catch(() => {});
 
@@ -274,6 +294,13 @@ async function login(identifier, password) {
   // Uniform error to avoid leaking which field was wrong.
   if (!student || !user || user.isDeleted) {
     throw new ApiError(401, 'Invalid credentials.');
+  }
+
+  // Email ownership must be proven before the account is usable. Only an
+  // explicit `false` blocks: accounts that predate verification have no field
+  // and stay usable.
+  if (user.emailVerified === false) {
+    throw new ApiError(403, 'Verify your college email before signing in. Check your inbox for the link.');
   }
   if (user.status !== 'active') {
     throw new ApiError(403, 'Your account has been deactivated. Please contact administration.');
@@ -408,4 +435,72 @@ async function resetPassword(token, newPassword) {
   );
 }
 
-module.exports = { register, login, getProfile, changePassword, forgotPassword, resetPassword, toProfile };
+/** Absolute URL the student clicks to prove they own the address. */
+function verifyLink(raw) {
+  const base = String(env.loginUrl || env.frontendOrigin || '').replace(/\/+$/, '');
+  return `${base}/verify-email?token=${raw}`;
+}
+
+/**
+ * Consume a verification token.
+ *
+ * Single-use and time-bound: the token fields are cleared in the same update
+ * that flips `emailVerified`, so a replayed link fails. Matched by HASH, so a
+ * database read never yields a usable link.
+ */
+async function verifyEmail(token) {
+  const raw = String(token || '').trim();
+  if (!raw) throw new ApiError(400, 'This verification link is invalid.');
+  const hash = crypto.createHash('sha256').update(raw).digest('hex');
+
+  const user = await User.findOne({ verifyTokenHash: hash, role: 'student' }).lean();
+  if (!user || user.isDeleted) {
+    throw new ApiError(400, 'This verification link is invalid or has already been used.');
+  }
+  if (!user.verifyTokenExpiresAt || new Date(user.verifyTokenExpiresAt).getTime() < Date.now()) {
+    throw new ApiError(400, 'This verification link has expired. Request a new one.');
+  }
+
+  await User.updateOne(
+    { id: user.id },
+    {
+      $set: { emailVerified: true, updatedAt: new Date().toISOString() },
+      $unset: { verifyTokenHash: '', verifyTokenExpiresAt: '' },
+    }
+  );
+}
+
+/**
+ * Re-send the verification link. Silent for unknown or already-verified
+ * accounts so this cannot be used to discover which addresses are registered.
+ */
+async function resendVerification(email) {
+  const normalized = String(email || '').trim().toLowerCase();
+  if (!isEmail(normalized)) throw new ApiError(400, 'Enter a valid email address.');
+
+  const user = await User.findOne({ email: normalized, role: 'student' }).lean();
+  if (!user || user.isDeleted || user.emailVerified !== false) return;
+
+  const t = mintToken(VERIFY_TOKEN_TTL_MS);
+  await User.updateOne(
+    { id: user.id },
+    { $set: { verifyTokenHash: t.hash, verifyTokenExpiresAt: t.expiresAt, updatedAt: new Date().toISOString() } }
+  );
+
+  const student = await Student.findOne({ $or: [{ id: user.studentId }, { userId: user.id }] }).lean();
+  void sendTemplateEmail({
+    to: normalized,
+    toName: student?.studentName || user.name,
+    template: 'welcome',
+    data: {
+      name: student?.studentName || user.name,
+      email: normalized,
+      enrollmentNumber: student?.enrollmentNumber,
+      department: student?.department,
+      verifyUrl: verifyLink(t.raw),
+      expiresInHours: Math.round(VERIFY_TOKEN_TTL_MS / 3600000),
+    },
+  }).catch(() => {});
+}
+
+module.exports = { register, login, getProfile, changePassword, forgotPassword, resetPassword, toProfile, verifyEmail, resendVerification };

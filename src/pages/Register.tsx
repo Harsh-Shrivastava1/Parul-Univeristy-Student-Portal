@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { toast } from 'sonner';
-import { useAuth } from '../hooks/useAuth';
 import { authService } from '../services/authService';
 import { instituteService, type InstituteOption } from '../services/departmentService';
 import { Button } from '../components/ui/button';
@@ -35,8 +33,7 @@ import {
   Building2,
   Layers,
   User as UserIcon,
-  ArrowRight,
-} from 'lucide-react';
+  ArrowRight, MailCheck, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8];
@@ -76,10 +73,9 @@ const iconWrap =
 const labelClass = 'text-zinc-700 font-semibold text-xs uppercase tracking-wider';
 
 const Register: React.FC = () => {
-  const navigate = useNavigate();
-  const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [registerError, setRegisterError] = useState<string | null>(null);
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [institutes, setInstitutes] = useState<InstituteOption[]>([]);
@@ -123,7 +119,7 @@ const Register: React.FC = () => {
     setIsLoading(true);
     setRegisterError(null);
     try {
-      const user = await authService.register({
+      await authService.register({
         fullName: data.fullName,
         enrollmentNumber: data.enrollmentNumber,
         institute: data.institute,
@@ -132,16 +128,43 @@ const Register: React.FC = () => {
         email: data.email,
         password: data.password,
       });
-      // Backend auto-issues the session on register → log straight into the app.
-      login(user);
-      toast.success('Account created successfully. Welcome to the portal!', { duration: 5000 });
-      navigate('/');
+      // No session on signup: the college address has to be proven first, so
+      // send them to check their mail rather than into the app.
+      setRegisteredEmail(data.email);
     } catch (err) {
       setRegisterError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Signup no longer logs the student in — the college address has to be proven
+  // first — so this is where the flow ends until they open the link.
+  if (registeredEmail) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl p-6 sm:p-8 border border-zinc-100 text-center"
+      >
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50">
+          <MailCheck className="h-6 w-6 text-emerald-600" />
+        </div>
+        <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Check your email</h2>
+        <p className="mt-2 text-sm font-medium leading-relaxed text-zinc-500">
+          We sent a verification link to{' '}
+          <span className="font-semibold text-zinc-700">{registeredEmail}</span>. Open it to activate
+          your account — the link expires in 24 hours.
+        </p>
+        <Link
+          to="/login"
+          className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[#1e5bce] hover:text-blue-700"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to sign in
+        </Link>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div

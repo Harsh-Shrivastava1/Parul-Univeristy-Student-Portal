@@ -98,17 +98,18 @@ const stripTags = (html) =>
 /** The 12+ lifecycle templates, keyed by template id. */
 const LIFECYCLE_TEMPLATES = {
   welcome: (d) => ({
-    subject: 'Welcome to the Internship Management System',
+    subject: 'Verify your college email',
     body:
       greeting(d) +
-      p(`Your student account has been created successfully. You can now browse internship advertisements, apply to opportunities, and track your applications from your dashboard.`) +
+      p(`Welcome to the Parul University Internship Portal. One step left — confirm this is your address so we know the account is yours.`) +
       infoTable([
-        ['Name', d.name],
-        ['Enrollment No.', d.enrollmentNumber],
         ['Email', d.email],
+        ['Enrollment Number', d.enrollmentNumber],
         ['Department', d.department],
       ]) +
-      button('Go to Portal', d.loginUrl) +
+      button('Verify my email', d.verifyUrl) +
+      p(`This link expires in ${d.expiresInHours || 24} hours and can be used once. You will not be able to sign in until it is used.`) +
+      callout(`If you did not create this account, ignore this email — it will not be activated.`, 'warn') +
       signoff(),
   }),
 

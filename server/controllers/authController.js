@@ -31,9 +31,25 @@ function issueSession(res, profile) {
 // POST /api/auth/register  (public) — self-registration + auto-login
 const register = asyncHandler(async (req, res) => {
   const profile = await authService.register(req.body);
-  const token = issueSession(res, profile);
   await recordAudit({ action: 'STUDENT_REGISTERED', userId: profile.id, userName: profile.name, entityId: profile.id, ip: clientIp(req) });
-  res.status(201).json({ success: true, data: { ...profile, token } });
+  // NO session here. The address is not proven yet, and issuing one on signup is
+  // what let anyone claim an arbitrary enrollment number and act immediately.
+  res.status(202).json({
+    success: true,
+    data: { email: profile.email, message: 'Check your college email for the verification link.' },
+  });
+});
+
+const verifyEmail = asyncHandler(async (req, res) => {
+  await authService.verifyEmail((req.body || {}).token);
+  await recordAudit({ action: 'STUDENT_EMAIL_VERIFIED', entity: 'auth', ip: clientIp(req) }).catch(() => {});
+  res.json({ success: true, data: { message: 'Email verified. You can sign in now.' } });
+});
+
+const resendVerification = asyncHandler(async (req, res) => {
+  await authService.resendVerification((req.body || {}).email);
+  // Always the same answer: this must not reveal which addresses are registered.
+  res.json({ success: true, data: { message: 'If that account needs verification, a new link is on its way.' } });
 });
 
 // POST /api/auth/login  (public)
@@ -118,4 +134,4 @@ const resetPassword = asyncHandler(async (req, res) => {
   res.json({ success: true, data: { message: 'Password updated. You can now sign in.' } });
 });
 
-module.exports = { register, login, refresh, me, logout, changePassword, forgotPassword, resetPassword };
+module.exports = { register, login, refresh, me, logout, changePassword, forgotPassword, resetPassword, verifyEmail, resendVerification };
