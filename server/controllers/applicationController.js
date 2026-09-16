@@ -2,7 +2,6 @@ const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const Application = require('../models/Application');
 const Advertisement = require('../models/Advertisement');
-const Notification = require('../models/Notification');
 const { loadIdentity, studentMatch } = require('../utils/identity');
 const { toApplication } = require('../utils/mappers');
 
@@ -33,104 +32,19 @@ const getOne = asyncHandler(async (req, res) => {
   res.json({ success: true, data: toApplication(app, ad) });
 });
 
-// POST /api/applications — submit application
-const create = asyncHandler(async (req, res) => {
-  const identity = await loadIdentity(req.user.sub);
-  if (!identity) throw new ApiError(404, 'Account not found.');
+// The create and withdraw handlers that used to live here have been REMOVED.
+//
+// They were a second writer for a collection the TEC backend owns, and they
+// enforced none of its rules: no Published/not-deleted check on apply, no
+// status gate on withdraw, no advertisement counter, no audit. The SPA retried
+// them whenever the TEC call threw — which apiClient does on every non-2xx —
+// so a deliberate TEC refusal was silently converted into a successful write.
+// The create handler also passed an uncast request value straight into a query
+// predicate against a schemaless model, which made it an operator-injection
+// sink that disclosed unpublished advertisements.
+//
+// Do not re-add them. If a write must be served from this portal, it has to
+// carry the same gates, and the ownership model in docs/DATABASE.md has to
+// change with it.
 
-  const { advertisementId, formData } = req.body || {};
-  if (!advertisementId || !formData) {
-    throw new ApiError(400, 'advertisementId and formData are required.');
-  }
-
-  const ad = await Advertisement.findOne({ id: advertisementId }).lean();
-  if (!ad) throw new ApiError(404, 'Internship posting not found.');
-
-  // Check duplicate
-  const existing = await Application.findOne({
-    advertisementId,
-    ...studentMatch(identity.user, identity.student),
-  }).lean();
-
-  if (existing) {
-    throw new ApiError(400, 'You have already submitted an application for this internship.');
-  }
-
-  const appId = `app_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-  const now = new Date().toISOString();
-
-  const newDoc = await Application.create({
-    id: appId,
-    advertisementId,
-    advertisementTitle: ad.title || ad.internshipTitle || ad.postName || '',
-    studentId: identity.student ? identity.student.id : identity.user.id,
-    userId: identity.user.id,
-    studentName: identity.user.name,
-    enrollmentNumber: identity.student ? identity.student.enrollmentNumber : formData.enrollmentNumber,
-    department: identity.student ? identity.student.department : formData.departmentName,
-    appliedDate: now,
-    lastUpdated: now,
-    status: 'Applied',
-    applicationStatus: 'Applied',
-    formData,
-    timeline: [
-      {
-        status: 'Applied',
-        at: now,
-        timestamp: now,
-        notes: 'Application submitted successfully.',
-      },
-    ],
-  });
-
-  // Create a notification so the student can see this event in the
-  // Notifications section immediately. Non-blocking: a failure here must
-  // never prevent the application response from being sent.
-  try {
-    const recipientId = identity.student ? identity.student.id : identity.user.id;
-    const enrollmentNumber = identity.student
-      ? identity.student.enrollmentNumber
-      : (formData && formData.enrollmentNumber) || '';
-    const postName = ad.title || ad.internshipTitle || ad.postName || 'Internship';
-    await Notification.create({
-      id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      recipientId,
-      userId: identity.user.id,
-      studentId: recipientId,
-      enrollmentNumber,
-      title: 'Application Submitted',
-      message: `Your application for "${postName}" has been submitted successfully. Application ID: ${appId}`,
-      type: 'success',
-      read: false,
-      createdAt: now,
-      date: now,
-      link: '/status',
-      applicationId: appId,
-      status: 'Applied',
-    });
-  } catch (notifErr) {
-    // Notification creation is best-effort — log but don't fail the request.
-    console.warn('[applicationController] Failed to create submission notification:', notifErr && notifErr.message);
-  }
-
-  res.json({ success: true, data: toApplication(newDoc.toObject(), ad) });
-});
-
-// DELETE /api/applications/:id — withdraw application
-const remove = asyncHandler(async (req, res) => {
-  const identity = await loadIdentity(req.user.sub);
-  if (!identity) throw new ApiError(404, 'Account not found.');
-
-  const app = await Application.findOne({
-    id: req.params.id,
-    ...studentMatch(identity.user, identity.student),
-  });
-
-  if (!app) throw new ApiError(404, 'Application not found.');
-
-  await Application.deleteOne({ id: req.params.id });
-  res.json({ success: true, message: 'Application withdrawn successfully.' });
-});
-
-module.exports = { getOne, create, remove };
-
+module.exports = { getOne };

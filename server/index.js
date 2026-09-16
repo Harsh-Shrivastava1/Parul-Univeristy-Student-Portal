@@ -6,6 +6,7 @@ const cookieParser = require('cookie-parser');
 const { env } = require('./config/env');
 const connectDB = require('./config/db');
 const apiRoutes = require('./routes');
+const { csrfGuard } = require('./middleware/csrf');
 const errorHandler = require('./middleware/errorHandler');
 const { verifyEmailTransport } = require('./services/email/mailer');
 const { startApplicationWatcher, stopApplicationWatcher } = require('./utils/applicationWatcher');
@@ -30,6 +31,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
+// Reject cross-site state-changing requests before any route handler runs.
+app.use('/api', csrfGuard);
 app.use('/api', apiRoutes);
 
 // Health check

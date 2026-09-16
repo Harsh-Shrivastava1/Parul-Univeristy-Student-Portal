@@ -30,8 +30,15 @@ const list = asyncHandler(async (req, res) => {
 
 // GET /api/advertisements/:id  (TEC-owned, read-only)
 const getOne = asyncHandler(async (req, res) => {
-  const ad = await Advertisement.findOne({ id: req.params.id }).lean();
-  if (!ad || ad.isDeleted) throw new ApiError(404, 'Internship not found.');
+  // Apply the SAME visibility filter the list route uses. Checking only
+  // isDeleted let any student read a Draft, Closed or Archived advertisement by
+  // id — including its contact person and contact email — and advertisement ids
+  // are visible to them in their own application records.
+  const ad = await Advertisement.findOne({
+    id: String(req.params.id || ''),
+    ...visibleFilter,
+  }).lean();
+  if (!ad) throw new ApiError(404, 'Internship not found.');
   res.json({ success: true, data: toInternship(ad) });
 });
 

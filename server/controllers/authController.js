@@ -107,4 +107,15 @@ const forgotPassword = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { register, login, refresh, me, logout, changePassword, forgotPassword };
+const resetPassword = asyncHandler(async (req, res) => {
+  const { token, password } = req.body || {};
+  await authService.resetPassword(token, password);
+  await recordAudit({
+    action: 'AUTH_PASSWORD_RESET',
+    entity: 'auth',
+    ip: clientIp(req),
+  }).catch(() => {});
+  res.json({ success: true, data: { message: 'Password updated. You can now sign in.' } });
+});
+
+module.exports = { register, login, refresh, me, logout, changePassword, forgotPassword, resetPassword };

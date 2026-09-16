@@ -24,6 +24,9 @@ function escapeRegex(s) {
  * policy (>= 8 chars, at least one letter and one digit). Cryptographically
  * random via crypto.randomBytes.
  */
+/** Password-reset links are short-lived; a stale link must not stay usable. */
+const RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
+
 function generateTempPassword() {
   const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz';
   const digits = '23456789';
@@ -332,7 +335,14 @@ async function forgotPassword(email) {
   }
 
   const user = await User.findOne({ email: normalizedEmail, role: 'student' }).lean();
-  // Silent no-op for unknown / inactive accounts — do not reveal existence.
+
+  // Constant-ish work on BOTH branches. Previously a miss returned immediately
+  // while a hit ran bcrypt, and that few-hundred-millisecond gap defeated the
+  // deliberately generic API response — it let an attacker enumerate which
+  // addresses are real, which is exactly what makes a lockout attack scalable.
+  const raw = crypto.randomBytes(32).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(raw).digest('hex');
+
   if (!user || user.isDeleted || user.status !== 'active') return;
 
   const student = await Student.findOne({
@@ -340,14 +350,24 @@ async function forgotPassword(email) {
   }).lean();
   const displayName = student?.studentName || student?.name || user.name;
 
-  const tempPassword = generateTempPassword();
-  const passwordHash = await hashPassword(tempPassword);
+  // Store only the HASH of the token, with a short expiry. The credential is
+  // NOT changed here: an unauthenticated request must never be able to alter a
+  // password, which previously let anyone lock out any student whose address
+  // they knew.
   await User.updateOne(
     { id: user.id },
-    { $set: { passwordHash, updatedAt: new Date().toISOString() } }
+    {
+      $set: {
+        resetTokenHash: tokenHash,
+        resetTokenExpiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS).toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    }
   );
 
-  // Fire-and-forget: a mail failure must not change the generic API response.
+  const base = env.loginUrl || env.frontendOrigin;
+  const resetUrl = `${String(base).replace(/\/+$/, '')}/reset-password?token=${raw}`;
+
   void sendTemplateEmail({
     to: normalizedEmail,
     toName: displayName,
@@ -356,10 +376,44 @@ async function forgotPassword(email) {
       name: displayName,
       email: normalizedEmail,
       enrollmentNumber: student?.enrollmentNumber,
-      tempPassword,
-      loginUrl: env.loginUrl || env.frontendOrigin,
+      resetUrl,
+      expiresInMinutes: Math.round(RESET_TOKEN_TTL_MS / 60000),
     },
   }).catch(() => {});
 }
 
-module.exports = { register, login, getProfile, changePassword, forgotPassword, toProfile };
+/**
+ * Consume a reset token and set the new password.
+ *
+ * Single-use and time-bound: the token fields are cleared in the same update
+ * that writes the new hash, so a replayed link fails. The token is matched by
+ * HASH, so a database read does not yield a usable credential.
+ */
+async function resetPassword(token, newPassword) {
+  const raw = String(token || '').trim();
+  const password = String(newPassword || '');
+  if (!raw) throw new ApiError(400, 'This reset link is invalid.');
+  if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+    throw new ApiError(400, 'Password must be at least 8 characters and include a letter and a number.');
+  }
+
+  const tokenHash = crypto.createHash('sha256').update(raw).digest('hex');
+  const user = await User.findOne({ resetTokenHash: tokenHash, role: 'student' }).lean();
+  if (!user || user.isDeleted || user.status !== 'active') {
+    throw new ApiError(400, 'This reset link is invalid or has already been used.');
+  }
+  if (!user.resetTokenExpiresAt || new Date(user.resetTokenExpiresAt).getTime() < Date.now()) {
+    throw new ApiError(400, 'This reset link has expired. Request a new one.');
+  }
+
+  const passwordHash = await hashPassword(password);
+  await User.updateOne(
+    { id: user.id },
+    {
+      $set: { passwordHash, updatedAt: new Date().toISOString() },
+      $unset: { resetTokenHash: '', resetTokenExpiresAt: '' },
+    }
+  );
+}
+
+module.exports = { register, login, getProfile, changePassword, forgotPassword, resetPassword, toProfile };

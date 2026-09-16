@@ -67,8 +67,8 @@ const ForgotPassword: React.FC = () => {
           <h2 className="text-2xl font-bold text-zinc-900 tracking-tight">Check your email</h2>
           <p className="text-zinc-500 text-sm mt-2 font-medium leading-relaxed">
             If an account exists for <span className="font-semibold text-zinc-700">{form.getValues('email')}</span>,
-            we've sent a temporary password to it. Sign in with that temporary password, then set a new one
-            from your profile.
+            we've sent a link to it. Open the link to choose a new password — it can be used
+            once and expires in 30 minutes.
           </p>
           <Link
             to="/login"
@@ -85,7 +85,7 @@ const ForgotPassword: React.FC = () => {
             </div>
             <h2 className="text-2xl font-bold text-zinc-900 tracking-tight">Forgot your password?</h2>
             <p className="text-zinc-500 text-sm mt-1.5 font-medium leading-relaxed">
-              Enter your registered email and we'll send you a temporary password to sign in with.
+              Enter your registered email and we'll send you a link to choose a new password.
             </p>
           </div>
 
@@ -136,7 +136,7 @@ const ForgotPassword: React.FC = () => {
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Sending...
                   </>
                 ) : (
-                  'Send temporary password'
+                  'Send reset link'
                 )}
               </Button>
 

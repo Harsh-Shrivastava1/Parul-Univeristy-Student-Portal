@@ -40,6 +40,11 @@ export const authService = {
     await api.post<void>('/auth/forgot-password', { email });
   },
 
+  /** Consume a single-use reset link and set the new password. */
+  resetPassword: async (token: string, password: string): Promise<void> => {
+    await api.post<void>('/auth/reset-password', { token, password });
+  },
+
   // Self-service password change (authenticated): current (or temp) password
   // + new password. Backend enforces the password policy.
   changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {

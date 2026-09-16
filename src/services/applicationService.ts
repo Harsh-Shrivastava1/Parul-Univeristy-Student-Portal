@@ -32,19 +32,15 @@ export const applicationService = {
     _internship: Application['internship'],
     formData: ApplicationFormData
   ): Promise<Application> => {
-    try {
-      return await tecApi.post<Application>('/applications', { advertisementId: internshipId, formData });
-    } catch (err: any) {
-      // Fallback to Student API if TEC server (port 4000) is unreachable or fails
-      return await studentApi.post<Application>('/applications', { advertisementId: internshipId, formData });
-    }
+    // No fallback. This used to retry the Student backend on ANY thrown value,
+    // and apiClient throws on every non-2xx — so a TEC policy rejection ("this
+    // advertisement is not accepting applications") was silently converted into
+    // a successful write through a weaker endpoint. A refusal must reach the
+    // user.
+    return tecApi.post<Application>('/applications', { advertisementId: internshipId, formData });
   },
 
   withdrawApplication: async (appId: string): Promise<void> => {
-    try {
-      await tecApi.del<void>(`/applications/${appId}`);
-    } catch {
-      await studentApi.del<void>(`/applications/${appId}`);
-    }
+    await tecApi.del<void>(`/applications/${appId}`);
   },
 };

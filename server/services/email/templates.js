@@ -127,16 +127,13 @@ const LIFECYCLE_TEMPLATES = {
   }),
 
   password_reset: (d) => ({
-    subject: 'Your password has been reset',
+    subject: 'Reset your password',
     body:
       greeting(d) +
-      p(`Your password has been reset by an administrator. Use the temporary password below to sign in, then set a new password from your profile.`) +
-      infoTable([
-        ['Email', d.email],
-        ['Temporary Password', d.tempPassword],
-      ]) +
-      callout(`If you did not expect this change, contact the Technical Events Cell right away.`, 'warn') +
-      button('Sign In', d.loginUrl || d.resetUrl) +
+      p(`We received a request to reset your password. Use the button below to choose a new one. The link expires in ${d.expiresInMinutes || 30} minutes and can be used once.`) +
+      infoTable([['Email', d.email]]) +
+      button('Set a new password', d.resetUrl) +
+      callout(`If you did not request this, you can ignore this email — your password has not changed.`, 'warn') +
       signoff(),
   }),
 
