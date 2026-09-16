@@ -11,10 +11,15 @@
  * unconfigured backend fails fast with a clear error instead of silently hitting
  * the Student origin. No business logic lives here — request in, data out.
  */
+// The localhost default is DEV-ONLY. Vite bakes these at build time, so a
+// production build with VITE_STUDENT_API_URL unset used to ship a bundle that
+// called the visitor's own machine — silently, with no error anywhere. Leaving
+// it empty in a production build makes every request fail loudly instead
+// (same fail-fast contract as the TEC and Coordinator URLs below).
 const STUDENT_API =
   (import.meta.env.VITE_STUDENT_API_URL as string | undefined) ||
   (import.meta.env.VITE_API_URL as string | undefined) ||
-  'http://localhost:5002/api';
+  (import.meta.env.DEV ? 'http://localhost:5002/api' : undefined);
 const TEC_API = import.meta.env.VITE_TEC_API_URL as string | undefined;
 const COORDINATOR_API = import.meta.env.VITE_COORDINATOR_API_URL as string | undefined;
 
@@ -75,6 +80,7 @@ function refreshAccessToken(): Promise<boolean> {
   if (!refreshInFlight) {
     refreshInFlight = (async () => {
       try {
+        if (!STUDENT_API) throw new Error('Student backend URL is not configured — set VITE_STUDENT_API_URL.');
         const res = await fetch(`${STUDENT_API}/auth/refresh`, {
           method: 'POST',
           credentials: 'include',

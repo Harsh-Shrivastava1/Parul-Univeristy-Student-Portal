@@ -16,6 +16,10 @@ services:
         value: "22"
       - key: NODE_ENV
         value: production
+      # Server-rendered PDFs are dated in IST; a UTC host would date documents
+      # generated after 18:30 IST to the previous day.
+      - key: TZ
+        value: Asia/Kolkata
       - key: COOKIE_SAMESITE
         value: none # Vercel frontend ↔ Render backend are cross-site
       - key: COOKIE_SECURE

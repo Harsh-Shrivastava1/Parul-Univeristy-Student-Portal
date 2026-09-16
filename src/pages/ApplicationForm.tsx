@@ -166,6 +166,10 @@ const ApplicationForm: React.FC = () => {
   }, []);
   const selectedInstitute = watch('instituteName');
   const selectedDept = watch('departmentName');
+  // The signup-time values. When present they are authoritative and the form
+  // renders them read-only (the server ignores any other value anyway).
+  const profileInstitute = ((user as any)?.institute ?? '').trim();
+  const profileDepartment = (user?.department ?? '').trim();
   // How many SPI cells are mandatory: Sem 1 through (current semester − 2), i.e.
   // only the semesters whose results are declared. Drives the `*` markers and
   // required placeholders on the table.
@@ -202,7 +206,7 @@ const ApplicationForm: React.FC = () => {
         reset({
           date: today,
           instituteName: (user as any).institute || '',
-          // Prefilled from signup, but freely editable on the form.
+          // Locked to the signup values — see the read-only fields below.
           departmentName: user.department ?? '',
           // Autofilled from the student's saved profile (editable each time).
           degree: (user as any).degree ?? '',
@@ -418,40 +422,58 @@ const ApplicationForm: React.FC = () => {
             <Field label="Date">
               <Input value={displayDate} readOnly className={`${inp} bg-zinc-50 text-zinc-500 cursor-default`} />
             </Field>
+            {/* Institute + Department are chosen at signup and are IMMUTABLE —
+                the server strips them from profile updates, and the canonical
+                Application.department is taken from the profile, not this form.
+                Showing editable selects here let a student print an application
+                carrying a department they never actually belong to.
+                A student whose profile predates the cascading signup has no
+                saved value, so for them the picker is still offered. */}
             <Field label="Institute Name" required error={errors.instituteName?.message}>
-              {/* Controlled selects: they display the RHF value (autofilled from
-                  the student's profile) reliably, regardless of when the
-                  institute list finishes loading. */}
-              <select
-                value={selectedInstitute ?? ''}
-                onChange={(e) => {
-                  setValue('instituteName', e.target.value, { shouldValidate: true });
-                  setValue('departmentName', '', { shouldValidate: true });
-                }}
-                className={`${inp} w-full h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm`}
-              >
-                <option value="">Select institute…</option>
-                {/* Include the saved institute even before the list loads. */}
-                {selectedInstitute && !institutes.some((i) => i.code === selectedInstitute) && (
-                  <option value={selectedInstitute}>{selectedInstitute}</option>
-                )}
-                {institutes.map((i) => (
-                  <option key={i.code} value={i.code}>{i.code}</option>
-                ))}
-              </select>
+              {profileInstitute ? (
+                <Input
+                  value={profileInstitute}
+                  readOnly
+                  title="Set at signup — contact the Internship Cell to change it"
+                  className={`${inp} bg-zinc-50 text-zinc-500 cursor-default`}
+                />
+              ) : (
+                <select
+                  value={selectedInstitute ?? ''}
+                  onChange={(e) => {
+                    setValue('instituteName', e.target.value, { shouldValidate: true });
+                    setValue('departmentName', '', { shouldValidate: true });
+                  }}
+                  className={`${inp} w-full h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm`}
+                >
+                  <option value="">Select institute…</option>
+                  {institutes.map((i) => (
+                    <option key={i.code} value={i.code}>{i.code}</option>
+                  ))}
+                </select>
+              )}
             </Field>
             <Field label="Department" required error={errors.departmentName?.message}>
-              <select
-                value={selectedDept ?? ''}
-                onChange={(e) => setValue('departmentName', e.target.value, { shouldValidate: true })}
-                disabled={deptOptions.length === 0}
-                className={`${inp} w-full h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm disabled:bg-zinc-50 disabled:text-zinc-400`}
-              >
-                <option value="">{selectedInstitute || selectedDept ? 'Select department…' : 'Select institute first'}</option>
-                {deptOptions.map((d) => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
+              {profileDepartment ? (
+                <Input
+                  value={profileDepartment}
+                  readOnly
+                  title="Set at signup — contact the Internship Cell to change it"
+                  className={`${inp} bg-zinc-50 text-zinc-500 cursor-default`}
+                />
+              ) : (
+                <select
+                  value={selectedDept ?? ''}
+                  onChange={(e) => setValue('departmentName', e.target.value, { shouldValidate: true })}
+                  disabled={deptOptions.length === 0}
+                  className={`${inp} w-full h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm disabled:bg-zinc-50 disabled:text-zinc-400`}
+                >
+                  <option value="">{selectedInstitute || selectedDept ? 'Select department…' : 'Select institute first'}</option>
+                  {deptOptions.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              )}
             </Field>
             <Field label="Degree" required error={errors.degree?.message}>
               <Input {...register('degree')} placeholder="B.Tech, BCA, etc." className={inp} />

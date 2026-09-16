@@ -8,7 +8,7 @@ const connectDB = require('./config/db');
 const apiRoutes = require('./routes');
 const errorHandler = require('./middleware/errorHandler');
 const { verifyEmailTransport } = require('./services/email/mailer');
-const { startApplicationWatcher } = require('./utils/applicationWatcher');
+const { startApplicationWatcher, stopApplicationWatcher } = require('./utils/applicationWatcher');
 
 const app = express();
 
@@ -70,6 +70,7 @@ const start = async () => {
   // zero-downtime `pm2 reload` work in production.
   const shutdown = (signal) => {
     console.log(`⏻  Received ${signal}, shutting down gracefully…`);
+    stopApplicationWatcher();
     server.close(() => {
       const mongoose = require('mongoose');
       mongoose.connection

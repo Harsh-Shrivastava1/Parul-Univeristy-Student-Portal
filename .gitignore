@@ -26,3 +26,7 @@ dist-ssr
 .env.*
 !.env.example
 node_modules
+
+# Claude Code local settings — may contain command allow-lists with credentials
+# in request bodies. Never commit.
+.claude/settings.local.json

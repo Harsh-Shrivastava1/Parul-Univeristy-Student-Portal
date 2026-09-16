@@ -183,7 +183,63 @@ function buildNotificationDoc(app, status, when) {
     link: linkForStatus(status),
     applicationId: app.id,
     status,
+    // Deterministic key for the unique index below. Two processes racing the
+    // same change event produce the SAME key, so only one insert can win.
+    // Namespaced so it never collides with notifications from other portals.
+    dedupeKey: dedupeKeyFor(app.id, status),
   };
+}
+
+/** Stable per-(application, status) identity used for atomic de-duplication. */
+function dedupeKeyFor(applicationId, status) {
+  return `app:${applicationId}:${status}`;
+}
+
+/**
+ * Create the notification for (application, status) exactly once, even when
+ * several processes (PM2 cluster workers) handle the same change event.
+ *
+ * Two layers:
+ *   1. a read check, which also catches legacy notifications written before
+ *      `dedupeKey` existed (and those written by sibling portals), and
+ *   2. an atomic upsert on the unique `dedupeKey` index, which is what makes
+ *      concurrent workers safe — a read-then-insert alone is not.
+ *
+ * Returns true if this call actually created the notification.
+ */
+async function createNotificationOnce(app, status, when) {
+  const doc = buildNotificationDoc(app, status, when);
+  if (!doc) return false;
+  if (await notificationExists(app, status)) return false;
+  try {
+    const res = await Notification.updateOne(
+      { dedupeKey: doc.dedupeKey },
+      { $setOnInsert: doc },
+      { upsert: true },
+    );
+    return Boolean(res.upsertedCount);
+  } catch (err) {
+    // 11000 = another worker inserted first. That is the expected outcome of a
+    // race, not an error.
+    if (err && err.code === 11000) return false;
+    throw err;
+  }
+}
+
+/**
+ * Unique index backing createNotificationOnce(). Partial, so the many existing
+ * notifications without a `dedupeKey` (and those written by sibling portals)
+ * are unaffected.
+ */
+async function ensureNotificationIndex() {
+  try {
+    await Notification.collection.createIndex(
+      { dedupeKey: 1 },
+      { unique: true, partialFilterExpression: { dedupeKey: { $type: 'string' } }, name: 'dedupeKey_unique' },
+    );
+  } catch (err) {
+    console.warn('[appWatcher] Could not ensure dedupeKey index:', err && err.message);
+  }
 }
 
 /** True if a notification for (applicationId, status) already exists for this student. */
@@ -213,9 +269,7 @@ async function reconcileNotifications(apps) {
     const status = String(app.status || app.applicationStatus || '');
     if (!status || !STATUS_MESSAGES[status] || !app.id) continue;
     try {
-      if (await notificationExists(app, status)) continue;
-      const doc = buildNotificationDoc(app, status, app.updatedAt || app.appliedDate);
-      if (doc) await Notification.create(doc);
+      await createNotificationOnce(app, status, app.updatedAt || app.appliedDate);
     } catch (err) {
       console.warn('[appWatcher] reconcile failed for app', app.id, err && err.message);
     }
@@ -238,12 +292,47 @@ function recipientKeys(app) {
   return [...keys];
 }
 
+// Guards against running more than one change stream in a single process. The
+// restart path below used to be able to schedule two reconnects from one
+// failure (close() itself emits 'close'), which doubled the live stream count
+// on every Atlas drop.
+let started = false;
+let activeStream = null;
+
+/**
+ * Whether THIS process should own the change stream.
+ *
+ * In a PM2 cluster every worker runs this file, so without a gate each status
+ * change would be processed N times. Writes are de-duplicated atomically
+ * anyway (see createNotificationOnce), but running N streams is pure waste —
+ * so only cluster worker 0 watches. PM2 sets NODE_APP_INSTANCE per worker;
+ * outside a cluster it is undefined and the single process watches.
+ *
+ * Set WATCHER_ENABLED=false to disable entirely, or WATCHER_ENABLED=true to
+ * force-enable on a specific instance.
+ */
+function shouldWatch() {
+  const flag = process.env.WATCHER_ENABLED;
+  if (flag === 'false') return false;
+  if (flag === 'true') return true;
+  const instance = process.env.NODE_APP_INSTANCE;
+  return instance === undefined || instance === '' || instance === '0';
+}
+
 /**
  * Start watching the applications collection.
  * Call once, after MongoDB is connected.
  * Non-fatal: failures are logged but never crash the server.
  */
 function startApplicationWatcher() {
+  if (started) return; // already watching in this process
+  if (!shouldWatch()) {
+    console.log(`[appWatcher] Not the designated watcher instance (NODE_APP_INSTANCE=${process.env.NODE_APP_INSTANCE}) — skipping.`);
+    return;
+  }
+  started = true;
+  void ensureNotificationIndex();
+
   // Change streams require a replica set or Atlas. On a standalone dev MongoDB
   // this will throw "not implemented". We catch and log gracefully.
   try {
@@ -260,6 +349,7 @@ function startApplicationWatcher() {
     const stream = Application.watch(pipeline, {
       fullDocument: 'updateLookup', // always include the full post-update doc
     });
+    activeStream = stream;
 
     stream.on('change', async (change) => {
       try {
@@ -274,25 +364,31 @@ function startApplicationWatcher() {
           updated.status || updated.applicationStatus || doc.status || doc.applicationStatus;
         if (!newStatus || !STATUS_MESSAGES[newStatus]) return; // unknown/none — skip
 
-        // De-duplicate: skip if a notification for this (applicationId, status)
-        // already exists (written by another portal or a previous event).
-        if (await notificationExists(doc, newStatus)) return;
-
-        const notifDoc = buildNotificationDoc(doc, newStatus);
-        if (!notifDoc) return;
-        await Notification.create(notifDoc);
-        console.log(`[appWatcher] Created notification: ${notifDoc.title} for app ${doc.id} (status: ${newStatus})`);
+        // De-duplicate atomically: in a PM2 cluster every worker receives this
+        // same event, so only the upsert winner logs/creates.
+        const created = await createNotificationOnce(doc, newStatus);
+        if (created) {
+          console.log(`[appWatcher] Created notification for app ${doc.id} (status: ${newStatus})`);
+        }
       } catch (err) {
         console.warn('[appWatcher] Failed to create notification from change event:', err && err.message);
       }
     });
 
+    // Atlas M0 change streams can drop; auto-resume so notifications keep flowing.
+    // close() itself emits 'close', so without this latch a single error would
+    // schedule two restarts — and the watcher count would double on every drop.
+    let restartScheduled = false;
     const scheduleRestart = (why) => {
+      if (restartScheduled) return;
+      restartScheduled = true;
       console.warn(`[appWatcher] Change stream ${why} — restarting in 5s.`);
+      stream.removeAllListeners();
       try { stream.close(); } catch { /* ignore */ }
+      if (activeStream === stream) activeStream = null;
+      started = false; // allow exactly one restart
       setTimeout(() => startApplicationWatcher(), 5000);
     };
-    // Atlas M0 change streams can drop; auto-resume so notifications keep flowing.
     stream.on('error', (err) => scheduleRestart(`error (${err && err.message})`));
     stream.on('close', () => scheduleRestart('closed'));
 
@@ -305,4 +401,18 @@ function startApplicationWatcher() {
   }
 }
 
-module.exports = { startApplicationWatcher, reconcileNotifications };
+/**
+ * Stop the change stream during shutdown. Without this the stream's 'close'
+ * handler fires while the process is exiting and schedules a reconnect timer
+ * on a dying process.
+ */
+function stopApplicationWatcher() {
+  started = false;
+  if (!activeStream) return;
+  const stream = activeStream;
+  activeStream = null;
+  stream.removeAllListeners();
+  try { stream.close(); } catch { /* ignore */ }
+}
+
+module.exports = { startApplicationWatcher, stopApplicationWatcher, reconcileNotifications };
