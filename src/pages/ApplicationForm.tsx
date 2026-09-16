@@ -156,7 +156,7 @@ const ApplicationForm: React.FC = () => {
   const [resetDialog, setResetDialog] = useState(false);
   const today = new Date().toISOString().split('T')[0];
 
-  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } =
+  const { register, handleSubmit, reset, setValue, watch, setError, formState: { errors } } =
     useForm<FormValues>({ resolver: zodResolver(schema) as any, defaultValues: { date: today, declarationAccepted: false } });
 
   // Institute → department master data for the cascading dropdowns.
@@ -168,6 +168,10 @@ const ApplicationForm: React.FC = () => {
   const selectedDept = watch('departmentName');
   // The signup-time values. When present they are authoritative and the form
   // renders them read-only (the server ignores any other value anyway).
+  // CGPA bar from the advertisement. The server enforces this too — a client
+  // check alone is bypassable — but blocking here is what tells the student
+  // WHY, on the field, before they waste time filling the rest of the form.
+  const minCGPA = typeof internship?.minCGPA === 'number' ? internship.minCGPA : null;
   const profileInstitute = ((user as any)?.institute ?? '').trim();
   const profileDepartment = (user?.department ?? '').trim();
   // How many SPI cells are mandatory: Sem 1 through (current semester − 2), i.e.
@@ -237,6 +241,14 @@ const ApplicationForm: React.FC = () => {
   }, [id, user]);
 
   const onSubmit = async (data: FormValues) => {
+    // Refuse before anything is sent. The server repeats this check.
+    if (minCGPA !== null && Number(data.cgpa) < minCGPA) {
+      setError('cgpa', {
+        type: 'manual',
+        message: `This internship requires a minimum CGPA of ${minCGPA}. You entered ${data.cgpa}.`,
+      });
+      return;
+    }
     if (!user || !internship) return;
     setSubmitting(true);
     try {
@@ -576,7 +588,12 @@ const ApplicationForm: React.FC = () => {
 
           {/* Academic stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-2">
-            <Field label="Overall CGPA" required error={errors.cgpa?.message} hint="0 – 10">
+            <Field
+              label="Overall CGPA"
+              required
+              error={errors.cgpa?.message}
+              hint={minCGPA !== null ? `Minimum required: ${minCGPA}` : '0 – 10'}
+            >
               <Input {...register('cgpa')} type="number" step="0.01" min="0" max="10" placeholder="0.00" className={`${inp} text-center font-mono`} />
             </Field>
             <Field label="Live Backlogs" required error={errors.backlogs?.message} hint="0 if none">
