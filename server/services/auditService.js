@@ -33,12 +33,16 @@ function genId() {
  * Append an immutable audit entry to the shared auditLogs collection.
  * Best-effort: an audit failure must never break the primary action.
  */
-async function recordAudit({ action, userId, userName, entity, entityId, ip, meta }) {
+async function recordAudit({ action, userId, userName, role, entity, entityId, ip, meta }) {
   const entry = {
     id: genId(),
     action,
     userId: userId || null,
     userName: userName || null,
+    // The Admin portal shows a Role column for every row in the shared audit
+    // collection, and a row without one rendered as a blank badge.
+    // This portal authenticates students and nothing else, so that is the default.
+    role: role || 'student',
     entity: entity || 'student',
     entityId: entityId || null,
     ip: ip || null,
@@ -51,9 +55,13 @@ async function recordAudit({ action, userId, userName, entity, entityId, ip, met
     await AuditLog.create(entry);
   } catch (err) {
     if (err.code === 11000) {
-      // Index duplication on legacy null id field in shared auditLogs collection
+      // A duplicate id. Retry once without it — but report a second failure
+      // instead of swallowing it: an empty catch here hid the fact that this
+      // portal wrote no audit rows at all for a month.
       delete entry.id;
-      await AuditLog.create(entry).catch(() => {});
+      await AuditLog.create(entry).catch((retryErr) =>
+        logger.error('audit_write_failed_after_retry', { action, error: retryErr.message }),
+      );
     } else {
       logger.error('audit_write_failed', { action, error: err.message });
     }
