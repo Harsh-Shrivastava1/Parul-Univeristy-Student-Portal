@@ -27,15 +27,6 @@ function escapeRegex(s) {
 /** Password-reset links are short-lived; a stale link must not stay usable. */
 const RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
 
-function generateTempPassword() {
-  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz';
-  const digits = '23456789';
-  const all = letters + digits;
-  const bytes = crypto.randomBytes(10);
-  let out = letters[bytes[0] % letters.length] + digits[bytes[1] % digits.length];
-  for (let i = 2; i < 10; i++) out += all[bytes[i] % all.length];
-  return out; // e.g. "Kd7mQ9r2xB"
-}
 
 /** Merged user + student view matching the Student Portal `User` type. */
 function toProfile(user, student) {
@@ -336,10 +327,11 @@ async function forgotPassword(email) {
 
   const user = await User.findOne({ email: normalizedEmail, role: 'student' }).lean();
 
-  // Constant-ish work on BOTH branches. Previously a miss returned immediately
-  // while a hit ran bcrypt, and that few-hundred-millisecond gap defeated the
-  // deliberately generic API response — it let an attacker enumerate which
-  // addresses are real, which is exactly what makes a lockout attack scalable.
+  // The hit path no longer runs bcrypt, so the two-orders-of-magnitude gap that
+  // defeated the deliberately generic response is gone — a miss and a hit now
+  // differ by one indexed update rather than a ~300ms hash. That is a large
+  // reduction, not a constant-time guarantee: closing the residual gap would
+  // need an explicit timing floor on both branches.
   const raw = crypto.randomBytes(32).toString('hex');
   const tokenHash = crypto.createHash('sha256').update(raw).digest('hex');
 

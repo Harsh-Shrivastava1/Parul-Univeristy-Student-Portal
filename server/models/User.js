@@ -22,6 +22,16 @@ const userSchema = new Schema(
     deletedAt: { type: String, default: null },
     createdAt: { type: String, required: true },
     updatedAt: { type: String, required: true },
+    /**
+     * Password-reset token: only the SHA-256 hash is kept, so a database read
+     * does not yield a usable credential. Cleared in the same update that sets
+     * the new password, which is what makes the link single-use.
+     *
+     * These MUST be declared: the schema is strict, so an undeclared field is
+     * silently dropped on write and the whole reset flow fails closed.
+     */
+    resetTokenHash: { type: String, default: null },
+    resetTokenExpiresAt: { type: String, default: null },
   },
   {
     versionKey: false,
