@@ -9,6 +9,8 @@ import {
   XCircle,
   Trash2,
   CheckCheck,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { notificationService } from '../services/notificationService';
 import { useAuth } from '../hooks/useAuth';
@@ -44,7 +46,10 @@ const Notifications: React.FC = () => {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [page, setPage] = useState(1);
+  // Defaults to unread so "Mark all read" actually clears the page; the All
+  // tab is still there to look back over what has been read.
+  const [filter, setFilter] = useState<'all' | 'unread'>('unread');
 
   const fetchNotifications = async () => {
     if (!user) return;
@@ -75,6 +80,13 @@ const Notifications: React.FC = () => {
 
   const filtered = filter === 'unread' ? notifications.filter((n) => !n.read) : notifications;
   const unreadCount = notifications.filter((n) => !n.read).length;
+
+  // Page the list instead of rendering every card. The page is clamped rather
+  // than reset by an effect, so switching tabs never shows an empty page.
+  const PAGE_SIZE = 10;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
     <div>
@@ -119,7 +131,7 @@ const Notifications: React.FC = () => {
       ) : (
         <div className="space-y-2">
           <AnimatePresence>
-            {filtered.map((notif) => {
+            {pageItems.map((notif) => {
               const config = typeConfig[notif.type] ?? typeConfig.info;
               const Icon = config.icon;
               return (
@@ -185,6 +197,39 @@ const Notifications: React.FC = () => {
               );
             })}
           </AnimatePresence>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white px-4 py-3 mt-3">
+              <p className="text-xs text-zinc-500">
+                Showing <span className="font-medium text-zinc-900">{((safePage - 1) * PAGE_SIZE) + 1}</span>–
+                <span className="font-medium text-zinc-900">{Math.min(safePage * PAGE_SIZE, filtered.length)}</span> of{' '}
+                <span className="font-medium text-zinc-900">{filtered.length}</span>
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  disabled={safePage <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  <ChevronLeft size={14} /> Prev
+                </Button>
+                <span className="text-xs font-medium text-zinc-600">
+                  Page {safePage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  disabled={safePage >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  Next <ChevronRight size={14} />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
