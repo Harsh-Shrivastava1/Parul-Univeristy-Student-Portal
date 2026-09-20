@@ -18,6 +18,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Skeleton } from '../components/ui/skeleton';
 import { Separator } from '../components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { instituteService, type InstituteOption } from '../services/departmentService';
 import ChangePasswordCard from '../components/ChangePasswordCard';
 import { toast } from 'sonner';
 import { formatDate } from '../lib/dateUtils';
@@ -38,6 +40,9 @@ const schema = z.object({
   cgpa: z.string().optional(),
   backlogs: z.string().optional(),
   attendance: z.string().optional(),
+  institute: z.string().min(1, 'Select your institute'),
+  department: z.string().min(1, 'Select your department'),
+  semester: z.string().min(1, 'Select your semester'),
   sem1: z.string().optional(), sem2: z.string().optional(), sem3: z.string().optional(), sem4: z.string().optional(),
   sem5: z.string().optional(), sem6: z.string().optional(), sem7: z.string().optional(), sem8: z.string().optional(),
 });
@@ -62,9 +67,24 @@ const Profile: React.FC = () => {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema) as any,
   });
+
+  // Institute → academic-department master data, the same Admin-owned list the
+  // signup form uses. The backend validates the pair regardless.
+  const [institutes, setInstitutes] = useState<InstituteOption[]>([]);
+  useEffect(() => {
+    let active = true;
+    instituteService
+      .getInstitutes()
+      .then((list) => { if (active && list.length) setInstitutes(list); })
+      .catch(() => { /* dropdown stays empty; the current value still shows */ });
+    return () => { active = false; };
+  }, []);
+
+  const chosenInstitute = watch('institute');
+  const instituteDepts = institutes.find((i) => i.code === chosenInstitute)?.departments ?? [];
 
   const loadProfile = async () => {
     if (!authUser) return;
@@ -100,6 +120,9 @@ const Profile: React.FC = () => {
       cgpa: data.cgpa ? str(data.cgpa) : '',
       backlogs: str(data.backlogs),
       attendance: str(data.attendance),
+      institute: (data as unknown as { institute?: string }).institute ?? '',
+      department: data.department ?? '',
+      semester: str(data.semester),
       sem1: str(s.sem1), sem2: str(s.sem2), sem3: str(s.sem3), sem4: str(s.sem4),
       sem5: str(s.sem5), sem6: str(s.sem6), sem7: str(s.sem7), sem8: str(s.sem8),
     };
@@ -130,6 +153,9 @@ const Profile: React.FC = () => {
         cgpa: num(data.cgpa),
         backlogs: num(data.backlogs),
         attendance: num(data.attendance),
+        institute: data.institute,
+        department: data.department,
+        semester: num(data.semester),
         spiScores,
       } as never);
       if (!updated) {
@@ -316,20 +342,78 @@ const Profile: React.FC = () => {
           <div className="bg-white border border-zinc-200 rounded-2xl p-6 space-y-6">
             <div>
               <h3 className="font-semibold text-zinc-900 mb-4">Academic Information</h3>
-              {/* Department / semester / institute stay read-only (set at
-                  registration). CGPA / backlogs / attendance are editable so the
-                  student maintains them once and every application reuses them. */}
+              {/* Institute, department and semester are editable: students switch
+                  branch and move up a semester. Both must name a real pair in
+                  the master data, which the backend re-checks on save. */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {[
-                  { label: 'Department', value: profile.department },
-                  { label: 'Current Semester', value: `Semester ${profile.semester}` },
-                  { label: 'Institute', value: (profile as any).institute || 'PIET' },
-                ].map(({ label, value }) => (
-                  <div key={label} className="p-4 bg-zinc-50 rounded-xl border border-zinc-100">
-                    <p className="text-xs text-zinc-500 mb-1">{label}</p>
-                    <p className="font-bold text-zinc-900">{value}</p>
-                  </div>
-                ))}
+                {editing ? (
+                  <>
+                    <div>
+                      <Label className="text-xs text-zinc-500 mb-1 block">Institute</Label>
+                      <Select
+                        value={chosenInstitute}
+                        onValueChange={(v) => {
+                          setValue('institute', v, { shouldValidate: true });
+                          // Departments belong to the institute — clear it so a
+                          // department from the old one cannot be carried over.
+                          setValue('department', '', { shouldValidate: true });
+                        }}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Select institute" /></SelectTrigger>
+                        <SelectContent className="max-h-64">
+                          {institutes.map((i) => (
+                            <SelectItem key={i.code} value={i.code}>{i.code}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors.institute ? <p className="text-xs text-red-600 mt-1">{errors.institute.message}</p> : null}
+                    </div>
+                    <div>
+                      <Label className="text-xs text-zinc-500 mb-1 block">Department</Label>
+                      <Select
+                        value={watch('department')}
+                        onValueChange={(v) => setValue('department', v, { shouldValidate: true })}
+                        disabled={!chosenInstitute || instituteDepts.length === 0}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={chosenInstitute ? 'Select department' : 'Pick an institute first'} />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-64">
+                          {instituteDepts.map((d) => (
+                            <SelectItem key={d} value={d}>{d}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors.department ? <p className="text-xs text-red-600 mt-1">{errors.department.message}</p> : null}
+                    </div>
+                    <div>
+                      <Label className="text-xs text-zinc-500 mb-1 block">Current Semester</Label>
+                      <Select
+                        value={watch('semester')}
+                        onValueChange={(v) => setValue('semester', v, { shouldValidate: true })}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Select semester" /></SelectTrigger>
+                        <SelectContent>
+                          {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                            <SelectItem key={n} value={String(n)}>Semester {n}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors.semester ? <p className="text-xs text-red-600 mt-1">{errors.semester.message}</p> : null}
+                    </div>
+                  </>
+                ) : (
+                  [
+                    { label: 'Institute', value: (profile as unknown as { institute?: string }).institute },
+                    { label: 'Department', value: profile.department },
+                    { label: 'Current Semester', value: profile.semester ? `Semester ${profile.semester}` : undefined },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="p-4 bg-zinc-50 rounded-xl border border-zinc-100">
+                      <p className="text-xs text-zinc-500 mb-1">{label}</p>
+                      <p className="font-bold text-zinc-900">{value || '—'}</p>
+                    </div>
+                  ))
+                )}
                 {editing ? (
                   <>
                     <div>

@@ -81,6 +81,27 @@ function validateProfilePatch(body) {
     if (isNaN(n) || n < 0 || n > 100) throw new ApiError(400, 'Attendance must be between 0 and 100.');
     out.attendance = n;
   }
+  // --- Academic origin: institute / department / semester ---------------------
+  // Shape only. The institute+department PAIR is checked against the master
+  // data in the controller, which is where the database is reachable.
+  if (b.institute !== undefined) {
+    const v = trim(b.institute);
+    if (!v) throw new ApiError(400, 'Please select your institute.');
+    out.institute = ensureMax(v, MAX.name, 'Institute');
+  }
+  if (b.department !== undefined) {
+    const v = trim(b.department);
+    if (!v) throw new ApiError(400, 'Please select your department.');
+    out.department = ensureMax(v, MAX.name, 'Department');
+  }
+  if (b.semester !== undefined) {
+    const n = Number(b.semester);
+    if (!Number.isInteger(n) || n < 1 || n > 8) {
+      throw new ApiError(400, 'Semester must be a whole number between 1 and 8.');
+    }
+    out.semester = n;
+  }
+
   if (b.fatherName !== undefined) out.fatherName = ensureMax(trim(b.fatherName), MAX.name, "Father's name");
   if (b.motherName !== undefined) out.motherName = ensureMax(trim(b.motherName), MAX.name, "Mother's name");
   if (b.dateOfBirth !== undefined) out.dateOfBirth = ensureMax(trim(b.dateOfBirth), 40, 'Date of birth');

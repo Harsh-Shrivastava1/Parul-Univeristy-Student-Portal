@@ -2,6 +2,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const Student = require('../models/Student');
 const Application = require('../models/Application');
+const Institute = require('../models/Institute');
 const Advertisement = require('../models/Advertisement');
 const Training = require('../models/Training');
 const Notification = require('../models/Notification');
@@ -13,8 +14,11 @@ const { loadIdentity, studentKeys, studentMatch } = require('../utils/identity')
 const { toApplication, toTraining, toNotification } = require('../utils/mappers');
 const { reconcileNotifications } = require('../utils/applicationWatcher');
 
-// Personal fields the student is allowed to edit. Enrollment / department /
-// semester / academic data are intentionally excluded (immutable / not owned).
+// Personal fields the student is allowed to edit. The enrollment number stays
+// immutable — it is the identity other portals join on, and it is asserted once
+// at signup. Institute, department and semester ARE editable: students change
+// branch and move up a semester, and having to email someone to correct that
+// helped nobody. They are validated against the institute master data below.
 const EDITABLE = {
   contact: 'contactNumber',
   email: 'email',
@@ -23,9 +27,13 @@ const EDITABLE = {
   linkedIn: 'linkedIn',
   portfolio: 'portfolio',
   emergencyContact: 'emergencyContact',
+  // Academic origin. Institute + department must name a real pair in the
+  // master data (checked in updateProfile); semester is 1-8.
+  institute: 'institute',
+  department: 'department',
+  semester: 'semester',
   // Academic + personal details, synced from the application form so SPI and the
-  // rest persist on the profile and pre-fill future applications. Enrollment /
-  // department / semester remain immutable and are intentionally excluded.
+  // rest persist on the profile and pre-fill future applications.
   cgpa: 'cgpa',
   fatherName: 'fatherName',
   motherName: 'motherName',
@@ -53,6 +61,29 @@ const updateProfile = asyncHandler(async (req, res) => {
   if (!identity || !identity.student) throw new ApiError(404, 'Student profile not found.');
 
   const clean = validateProfilePatch(req.body || {});
+
+  // Institute and department are stored as plain text on this record and on
+  // every application, and the Admin portal counts students by them. So they
+  // may only be set to a pair that actually exists in the master data, and the
+  // pair is resolved from the incoming values PLUS the current ones — changing
+  // only the institute must not leave a department that does not belong to it.
+  if (clean.institute !== undefined || clean.department !== undefined) {
+    const institute = clean.institute ?? identity.student.institute;
+    const department = clean.department ?? identity.student.department;
+
+    const doc = await Institute.findOne({ code: institute }).lean();
+    if (!doc) throw new ApiError(400, `"${institute}" is not a recognised institute.`);
+
+    const names = (doc.departments || []).map((d) => String(d && d.name).trim());
+    const match = names.find((n) => n.toLowerCase() === String(department).trim().toLowerCase());
+    if (!match) {
+      throw new ApiError(400, `"${department}" is not a department of ${institute}. Pick one of its departments.`);
+    }
+    // Store the master-data spelling, not whatever casing was sent.
+    clean.institute = doc.code;
+    clean.department = match;
+  }
+
   const $set = { updatedAt: new Date().toISOString() };
   for (const [clientKey, dbKey] of Object.entries(EDITABLE)) {
     if (clean[clientKey] !== undefined) $set[dbKey] = clean[clientKey];
