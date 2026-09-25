@@ -152,9 +152,15 @@ async function register(payload) {
   const enrollmentNumber = String(payload.enrollmentNumber).trim();
   const email = String(payload.email).trim().toLowerCase();
 
+  // Deleted accounts must not block a new one. An administrator removing a
+  // student soft-deletes the user and releases the enrollment number, but the
+  // rows stay — applications and trainings point at them. Matching those here
+  // would lock the person out of the portal permanently, with "already
+  // registered" and no way forward.
+  const notDeleted = { isDeleted: { $ne: true } };
   const [emailTaken, enrollTaken] = await Promise.all([
-    User.findOne({ email: new RegExp(`^${escapeRegex(email)}$`, 'i') }).lean(),
-    Student.findOne({ enrollmentNumber }).lean(),
+    User.findOne({ email: new RegExp(`^${escapeRegex(email)}$`, 'i'), ...notDeleted }).lean(),
+    Student.findOne({ enrollmentNumber, ...notDeleted }).lean(),
   ]);
   if (emailTaken) throw new ApiError(409, 'An account with this email is already registered.');
   if (enrollTaken) throw new ApiError(409, 'An account with this enrollment number already exists.');
