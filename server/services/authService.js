@@ -274,25 +274,31 @@ async function login(identifier, password) {
   if (isEmailId) {
     // Email login (college mail id). Match on either the user or student doc.
     const rx = new RegExp(`^${escapeRegex(id)}$`, 'i');
-    user = await User.findOne({ role: 'student', email: rx }).lean();
+    // Prefer live rows throughout: a deleted account keeps both its user and
+    // student rows, so an address or enrollment number reused after a delete
+    // matches two. Without this the deleted one can win and the replacement
+    // account is refused at login.
+    user = await User.findOne({ role: 'student', email: rx, isDeleted: { $ne: true } }).lean();
     student = await Student.findOne(
       user
-        ? { $or: [{ id: user.studentId }, { userId: user.id }, { email: rx }] }
-        : { email: rx },
+        ? { $or: [{ id: user.studentId }, { userId: user.id }, { email: rx }], isDeleted: { $ne: true } }
+        : { email: rx, isDeleted: { $ne: true } },
     ).lean();
     if (student && !user) {
       user = await User.findOne({
         role: 'student',
         $or: [{ id: student.userId }, { studentId: student.id }],
+        isDeleted: { $ne: true },
       }).lean();
     }
   } else {
     // Enrollment-number login.
-    student = await Student.findOne({ enrollmentNumber: id }).lean();
+    student = await Student.findOne({ enrollmentNumber: id, isDeleted: { $ne: true } }).lean();
     user = student
       ? await User.findOne({
           role: 'student',
           $or: [{ id: student.userId }, { studentId: student.id }],
+          isDeleted: { $ne: true },
         }).lean()
       : null;
   }
