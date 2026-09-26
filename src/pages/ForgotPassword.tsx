@@ -56,7 +56,7 @@ const ForgotPassword: React.FC = () => {
     >
       {/* Mobile Branding */}
       <div className="flex lg:hidden flex-col items-center mb-6">
-        <img src="/pu-logo.png" alt="Parul University" className="h-14 object-contain" />
+        <img src="/parul-university-logo.svg" alt="Parul University — NAAC A++" className="h-10 w-auto max-w-full" />
       </div>
 
       {sent ? (

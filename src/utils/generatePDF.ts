@@ -53,36 +53,32 @@ export async function generateApplicationPDF(app: Application): Promise<void> {
   let y = 0;
 
   // ── HEADER BAND ─────────────────────────────────────────────────────────────
-  let textStartX = lm + 45;
+  // The lockup is 5:1, so it gets the top-left on its own and the form title
+  // sits beneath it; beside it there would be no room left for the right-hand
+  // Position / Dept line.
   try {
     const img = new Image();
-    img.src = '/pu-logo.png';
+    img.src = '/parul-university-logo.png';
     await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; });
-    const imgRatio = img.width / img.height;
-    const imgHeight = 23; // slightly larger logo
-    const imgWidth = imgHeight * imgRatio;
-    // y=1 (moved up from 5) so the logo's vertical centre aligns with the
-    // "Internship Cell" / "Candidate Information Form" text block.
-    doc.addImage(img, 'PNG', lm, 1, imgWidth, imgHeight);
-    textStartX = lm + imgWidth + 8;
+    const logoH = 10;
+    doc.addImage(img, 'PNG', lm, 4, logoH * (img.width / img.height), logoH);
   } catch {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
     doc.setTextColor(0, 0, 0);
     doc.text('PARUL UNIVERSITY', lm, 12);
-    textStartX = lm + 55;
   }
 
-  // Left/Center: Department & Form Info (Address removed per requirement)
+  // Left: department & form title, under the logo
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
   doc.setTextColor(20, 20, 20);
-  doc.text('Internship Cell', textStartX, 10);
+  doc.text('Internship Cell', lm, 21);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(60, 60, 60);
-  doc.text('Candidate Information Form', textStartX, 15);
+  doc.text('Candidate Information Form', lm, 26);
 
   // Right: Application Details (Status removed per requirement)
   doc.setFont('helvetica', 'bold');
@@ -94,7 +90,17 @@ export async function generateApplicationPDF(app: Application): Promise<void> {
   doc.setFontSize(8);
   doc.setTextColor(80, 80, 80);
   doc.text(`Applied: ${formatDate(app.appliedDate)}`, W - lm, 15, { align: 'right' });
-  doc.text(`Position: ${app.internship.postName}  |  Dept: ${app.internship.department}`, W - lm, 20, { align: 'right' });
+  // A long post name or department would otherwise run left into "Internship
+  // Cell" on the same band — shrink it to fit, the way kv() does values.
+  const posLine = `Position: ${app.internship.postName}  |  Dept: ${app.internship.department}`;
+  const posMax = W - lm - (lm + 40);
+  let posFs = 8;
+  while (posFs > 6 && doc.getTextWidth(posLine) > posMax) {
+    posFs -= 0.5;
+    doc.setFontSize(posFs);
+  }
+  doc.text(posLine, W - lm, 20, { align: 'right' });
+  doc.setFontSize(8);
 
   y = 32;
 

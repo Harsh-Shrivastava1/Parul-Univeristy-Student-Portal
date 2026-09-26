@@ -81,9 +81,9 @@ export const AuthLayout: React.FC = () => {
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-            src="/pu-logo.png"
-            alt="Parul University"
-            className="w-72 md:w-80 max-w-[90vw] object-contain mb-8"
+            src="/parul-university-logo.svg"
+            alt="Parul University — NAAC A++"
+            className="w-72 md:w-80 max-w-[90vw] h-auto mb-10"
           />
 
           <div className="relative z-10">

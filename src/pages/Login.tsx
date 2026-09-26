@@ -62,7 +62,7 @@ const Login: React.FC = () => {
     >
       {/* Mobile Branding (Hidden on large screens) */}
       <div className="flex lg:hidden flex-col items-center mb-6">
-        <img src="/pu-logo.png" alt="Parul University" className="h-14 object-contain" />
+        <img src="/parul-university-logo.svg" alt="Parul University — NAAC A++" className="h-10 w-auto max-w-full" />
       </div>
 
       <div className="mb-8 text-center lg:text-left">

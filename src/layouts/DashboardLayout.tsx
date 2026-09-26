@@ -73,10 +73,10 @@ export const DashboardLayout: React.FC = () => {
         {isCollapsed ? (
           <a 
             href="https://ums.paruluniversity.ac.in/Login.aspx" 
-            className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+            className="w-10 h-10 rounded-xl overflow-hidden ring-1 ring-zinc-200 shadow-sm flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
             title="Parul University UMS"
           >
-            <span className="text-white font-bold text-sm">PU</span>
+            <img src="/parul-university-icon.svg" alt="Parul University" className="w-full h-full" />
           </a>
         ) : (
           <a 
@@ -84,7 +84,7 @@ export const DashboardLayout: React.FC = () => {
             className="block cursor-pointer hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md"
             title="Parul University UMS"
           >
-            <img src="/pu-logo.png" alt="Parul University" className="w-[180px] max-w-none scale-110 origin-left -ml-2" />
+            <img src="/parul-university-logo.svg" alt="Parul University — NAAC A++" className="h-8 w-auto" />
           </a>
         )}
       </div>
@@ -185,7 +185,7 @@ export const DashboardLayout: React.FC = () => {
       {/* ── Mobile Top Bar ── */}
       <div className="md:hidden flex-shrink-0 flex items-center justify-between bg-white border-b border-zinc-200 px-4 h-16">
         <div className="flex items-center">
-          <img src="/pu-logo.png" alt="Parul University" className="h-10 object-contain" />
+          <img src="/parul-university-logo.svg" alt="Parul University — NAAC A++" className="h-8 w-auto" />
         </div>
         <div className="flex items-center gap-2">
           <Link
