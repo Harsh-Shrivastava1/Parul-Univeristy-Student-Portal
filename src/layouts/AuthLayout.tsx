@@ -83,7 +83,7 @@ export const AuthLayout: React.FC = () => {
             transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
             src="/parul-university-logo.svg"
             alt="Parul University — NAAC A++"
-            className="w-72 md:w-80 max-w-[90vw] h-auto mb-10"
+            className="w-[26rem] max-w-full h-auto mb-10"
           />
 
           <div className="relative z-10">
