@@ -220,15 +220,15 @@ const Dashboard: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recommended Internships */}
-        <motion.div variants={item} className="lg:col-span-2">
-          <Card className="border-zinc-200">
-            <CardHeader className="flex flex-row items-center justify-between pb-4">
+        <motion.div variants={item} className="lg:col-span-2 h-full">
+          <Card className="border-zinc-200 h-full flex flex-col">
+            <CardHeader className="flex flex-row items-center justify-between pb-4 flex-shrink-0">
               <CardTitle className="text-base font-semibold text-zinc-900">Recommended For You</CardTitle>
               <Button variant="ghost" size="sm" onClick={() => navigate('/internships')} className="text-blue-600 text-sm">
                 View all <ArrowRight size={14} className="ml-1" />
               </Button>
             </CardHeader>
-            <CardContent className="space-y-3 pt-0">
+            <CardContent className="space-y-3 pt-0 flex-1">
               {recommended.map((internship) => (
                 <div
                   key={internship.id}
@@ -270,17 +270,17 @@ const Dashboard: React.FC = () => {
         </motion.div>
 
         {/* Right panel */}
-        <div className="space-y-6">
+        <div className="flex flex-col gap-6 h-full">
           {/* Upcoming Interviews */}
-          <motion.div variants={item}>
-            <Card className="border-zinc-200">
-              <CardHeader className="pb-3">
+          <motion.div variants={item} className="flex-1 flex flex-col">
+            <Card className="border-zinc-200 h-full flex flex-col">
+              <CardHeader className="pb-3 flex-shrink-0">
                 <CardTitle className="text-base font-semibold text-zinc-900 flex items-center gap-2">
                   <Calendar size={16} className="text-blue-600" />
                   Upcoming Interviews
                 </CardTitle>
               </CardHeader>
-              <CardContent className="pt-0">
+              <CardContent className={`pt-0 flex-1 flex flex-col ${metrics.upcomingInterviews.length === 0 ? 'justify-center' : 'justify-start'}`}>
                 {metrics.upcomingInterviews.length > 0 ? (
                   <div className="space-y-3">
                     {metrics.upcomingInterviews.map((interview) => (
@@ -307,9 +307,9 @@ const Dashboard: React.FC = () => {
           </motion.div>
 
           {/* Recent Notifications */}
-          <motion.div variants={item}>
-            <Card className="border-zinc-200">
-              <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <motion.div variants={item} className="flex-1 flex flex-col">
+            <Card className="border-zinc-200 h-full flex flex-col">
+              <CardHeader className="flex flex-row items-center justify-between pb-3 flex-shrink-0">
                 <CardTitle className="text-base font-semibold text-zinc-900 flex items-center gap-2">
                   <Bell size={16} className="text-blue-600" />
                   Notifications
@@ -318,7 +318,7 @@ const Dashboard: React.FC = () => {
                   See all
                 </Button>
               </CardHeader>
-              <CardContent className="pt-0 space-y-2">
+              <CardContent className={`pt-0 space-y-2 flex-1 flex flex-col ${notifications.length === 0 ? 'justify-center' : 'justify-start'}`}>
                 {notifications.length === 0 && (
                   <p className="text-sm text-zinc-500 text-center py-4">No notifications</p>
                 )}
