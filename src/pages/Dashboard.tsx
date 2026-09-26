@@ -48,6 +48,7 @@ const statsCards = [
     icon: Briefcase,
     color: 'text-blue-600',
     bg: 'bg-blue-50',
+    trend: 'Total internships',
   },
   {
     key: 'applicationsSubmitted',
