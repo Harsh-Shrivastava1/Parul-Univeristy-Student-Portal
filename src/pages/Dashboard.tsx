@@ -48,7 +48,6 @@ const statsCards = [
     icon: Briefcase,
     color: 'text-blue-600',
     bg: 'bg-blue-50',
-    trend: '+3 this week',
   },
   {
     key: 'applicationsSubmitted',
@@ -194,16 +193,18 @@ const Dashboard: React.FC = () => {
           const Icon = stat.icon;
           const value = metrics[stat.key as keyof typeof metrics];
           return (
-            <motion.div key={stat.key} variants={item}>
-              <Card className="border-zinc-200 transition-shadow duration-200">
-                <CardContent className="p-5">
+            <motion.div key={stat.key} variants={item} className="h-full">
+              <Card className="border-zinc-200 transition-shadow duration-200 h-full">
+                <CardContent className="p-5 h-full">
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="text-xs text-zinc-500 font-medium">{stat.label}</p>
                       <p className="text-3xl font-bold text-zinc-900 mt-1">
                         {typeof value === 'number' ? value : '-'}
                       </p>
-                      <p className="text-xs text-zinc-400 mt-1">{stat.trend}</p>
+                      <p className="text-xs text-zinc-400 mt-1">
+                        {stat.trend || <span className="invisible select-none">&nbsp;</span>}
+                      </p>
                     </div>
                     <div className={`w-10 h-10 ${stat.bg} rounded-xl flex items-center justify-center flex-shrink-0`}>
                       <Icon size={20} className={stat.color} />
