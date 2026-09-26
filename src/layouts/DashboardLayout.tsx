@@ -84,7 +84,7 @@ export const DashboardLayout: React.FC = () => {
             className="block cursor-pointer hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md"
             title="Parul University UMS"
           >
-            <img src="/parul-university-logo.svg" alt="Parul University — NAAC A++" className="h-8 w-auto" />
+            <img src="/parul-university-logo.svg" alt="Parul University — NAAC A++" className="h-9 w-auto max-w-full" />
           </a>
         )}
       </div>
