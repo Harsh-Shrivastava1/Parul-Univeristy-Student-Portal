@@ -42,7 +42,7 @@ const STATUS_DESCRIPTIONS: Record<ApplicationStatus, string> = {
   'Training Assigned': 'A training program has been assigned to you.',
   'Training Starts': 'Your training has commenced. Please ensure your attendance.',
   'Training Completed': 'Training completed successfully.',
-  'Returned to TEC Cell': 'Training is finished, returning control to TEC Cell for final placement.',
+  'Returned to TEC Cell': 'Training is finished, returning control to the Internship Cell for final placement.',
   'Internship Starts': 'Your internship has officially started.',
   'Internship Completed': 'Internship completed successfully. Collect your certificate from the Internship Cell office.',
   'Final Completion': 'Internship journey completed. Collect your certificate from the Internship Cell office.',
@@ -65,6 +65,8 @@ function getStepTitle(step: ApplicationStatus, app?: Application | null): string
     const cell = getAssignedCell(app);
     if (cell) return `Assigned to ${cell}`;
   }
+  // The status key predates the rename; only the title shown here changes.
+  if (step === 'Returned to TEC Cell') return 'Returned to Internship Cell';
   return step;
 }
 

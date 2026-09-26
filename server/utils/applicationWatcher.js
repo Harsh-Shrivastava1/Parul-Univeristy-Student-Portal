@@ -97,8 +97,8 @@ const STATUS_MESSAGES = {
     type: 'success',
   },
   'Returned to TEC Cell': {
-    title: 'Returned to TEC Cell',
-    message: (app) => `Training is complete. You have been returned to the TEC Cell for final internship placement for "${appTitle(app)}".`,
+    title: 'Returned to Internship Cell',
+    message: (app) => `Training is complete. You have been returned to the Internship Cell for final internship placement for "${appTitle(app)}".`,
     type: 'info',
   },
   Rejected: {

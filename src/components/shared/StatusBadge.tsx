@@ -40,7 +40,7 @@ const config: Record<ApplicationStatus, { label: string; className: string }> = 
     className: 'bg-indigo-100 text-indigo-800 border border-indigo-300',
   },
   'Returned to TEC Cell': {
-    label: 'Returned to TEC Cell',
+    label: 'Returned to Internship Cell',
     className: 'bg-amber-50 text-amber-700 border border-amber-200',
   },
   'Internship Starts': {

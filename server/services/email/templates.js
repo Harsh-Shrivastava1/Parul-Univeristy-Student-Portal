@@ -10,7 +10,7 @@
  */
 
 const BRAND = 'Internship Management System';
-const ORG = 'Parul University · Technical Events Cell';
+const ORG = 'Parul University · Internship Cell';
 const ACCENT = '#4f46e5';
 
 function esc(s) {
@@ -57,7 +57,7 @@ function greeting(data) {
 }
 
 function signoff() {
-  return p(`Warm regards,<br/><strong>Technical Events Cell</strong><br/>Parul University`);
+  return p(`Warm regards,<br/><strong>Internship Cell</strong><br/>Parul University`);
 }
 
 /** Definition-list style table of key/value rows; blank values are skipped. */
