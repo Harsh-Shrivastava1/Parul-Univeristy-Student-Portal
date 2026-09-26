@@ -10,9 +10,8 @@ const instituteSchema = new Schema(
   {
     id: { type: String, index: true },
     code: { type: String, index: true },
-    emailAlias: { type: String, default: '' },
     departments: {
-      type: [{ _id: false, name: String, emailAlias: String }],
+      type: [{ _id: false, name: String }],
       default: [],
     },
     createdAt: { type: String },

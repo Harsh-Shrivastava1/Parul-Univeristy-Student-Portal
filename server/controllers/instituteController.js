@@ -3,8 +3,7 @@ const Institute = require('../models/Institute');
 
 /**
  * GET /api/institutes  (public) — read-only list for the signup cascading
- * dropdowns: [{ code, departments: [name, ...] }]. Email aliases are NOT
- * exposed here (they are internal mail-routing data).
+ * dropdowns: [{ code, departments: [name, ...] }].
  */
 const listInstitutes = asyncHandler(async (_req, res) => {
   const docs = await Institute.find({}).lean();
