@@ -46,8 +46,15 @@ const Login: React.FC = () => {
       const user = await authService.login(data.enrollmentNumber || '', data.password || '');
       login(user);
       navigate('/');
-    } catch {
-      setLoginError('Invalid credentials. Check your enrollment number / email and password.');
+    } catch (err) {
+      // Wrong details stay generic; anything else (not activated, deactivated)
+      // is the server's own wording, which tells the student what to do next.
+      const message = err instanceof Error ? err.message : '';
+      setLoginError(
+        !message || /invalid credentials/i.test(message)
+          ? 'Invalid credentials. Check your enrollment number / email and password.'
+          : message,
+      );
     } finally {
       setIsLoading(false);
     }
@@ -165,7 +172,17 @@ const Login: React.FC = () => {
               className="flex items-start gap-3 p-3.5 bg-red-50 text-red-700 text-sm rounded-xl border border-red-100"
             >
               <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />
-              <span className="font-medium">{loginError}</span>
+              <span className="font-medium">
+                {loginError}
+                {/activat/i.test(loginError) && (
+                  <>
+                    {' '}
+                    <Link to="/verify-email" className="font-semibold underline underline-offset-2 hover:text-red-800">
+                      Resend activation link
+                    </Link>
+                  </>
+                )}
+              </span>
             </motion.div>
           )}
 

@@ -431,7 +431,17 @@ const Register: React.FC = () => {
               className="flex items-start gap-3 p-3.5 bg-red-50 text-red-700 text-sm rounded-xl border border-red-100"
             >
               <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />
-              <span className="font-medium">{registerError}</span>
+              <span className="font-medium">
+                {registerError}
+                {/activat/i.test(registerError) && (
+                  <>
+                    {' '}
+                    <Link to="/verify-email" className="font-semibold underline underline-offset-2 hover:text-red-800">
+                      Resend activation link
+                    </Link>
+                  </>
+                )}
+              </span>
             </motion.div>
           )}
 

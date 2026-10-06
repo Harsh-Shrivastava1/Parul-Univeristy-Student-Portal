@@ -6,7 +6,7 @@ import { Input } from '../components/ui/input';
 import { Loader2, CheckCircle2, AlertCircle, MailCheck, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-type State = 'working' | 'done' | 'failed';
+type State = 'working' | 'done' | 'failed' | 'resend';
 
 /**
  * Consumes the emailed verification link.
@@ -19,8 +19,10 @@ const VerifyEmail: React.FC = () => {
   const [params] = useSearchParams();
   const token = params.get('token') ?? '';
 
-  const [state, setState] = useState<State>(token ? 'working' : 'failed');
-  const [error, setError] = useState<string | null>(token ? null : 'This link is incomplete.');
+  // Opened without a token (the "Resend activation link" on sign-in / signup):
+  // there is nothing to verify, just offer a new link.
+  const [state, setState] = useState<State>(token ? 'working' : 'resend');
+  const [error, setError] = useState<string | null>(null);
   const [resendTo, setResendTo] = useState('');
   const [resent, setResent] = useState(false);
   const ran = useRef(false);
@@ -70,13 +72,27 @@ const VerifyEmail: React.FC = () => {
         </>
       )}
 
-      {state === 'failed' && (
+      {(state === 'failed' || state === 'resend') && (
         <>
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
-            <AlertCircle className="h-6 w-6 text-red-500" />
-          </div>
-          <h1 className="text-xl font-semibold text-slate-900">Could not verify</h1>
-          <p className="text-sm text-slate-500">{error}</p>
+          {state === 'failed' ? (
+            <>
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
+                <AlertCircle className="h-6 w-6 text-red-500" />
+              </div>
+              <h1 className="text-xl font-semibold text-slate-900">Could not verify</h1>
+              <p className="text-sm text-slate-500">{error}</p>
+            </>
+          ) : (
+            <>
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50">
+                <MailCheck className="h-6 w-6 text-[#1e5bce]" />
+              </div>
+              <h1 className="text-xl font-semibold text-slate-900">Resend activation link</h1>
+              <p className="text-sm text-slate-500">
+                Enter the college email you signed up with and we will send a new activation link.
+              </p>
+            </>
+          )}
 
           {resent ? (
             <p className="flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">

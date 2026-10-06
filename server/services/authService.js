@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const Student = require('../models/Student');
 const Institute = require('../models/Institute');
+const Application = require('../models/Application');
 const ApiError = require('../utils/ApiError');
 const { hashPassword, comparePassword } = require('../utils/auth');
 const { MAX, isEmail } = require('../utils/validation');
@@ -39,6 +40,52 @@ function mintToken(ttlMs) {
   };
 }
 
+
+/**
+ * Where a student account stands on activation:
+ *   null      — not a never-activated student account (verified, legacy, staff)
+ *   'pending' — never activated, and its activation link is still live
+ *   'expired' — never activated, and its link has expired
+ */
+function activationState(user) {
+  if (!user || user.role !== 'student' || user.emailVerified !== false) return null;
+  const expires = user.verifyTokenExpiresAt ? new Date(user.verifyTokenExpiresAt).getTime() : 0;
+  return expires > Date.now() ? 'pending' : 'expired';
+}
+
+function pendingActivationMessage(user) {
+  const msLeft = new Date(user.verifyTokenExpiresAt).getTime() - Date.now();
+  const hours = Math.max(1, Math.ceil(msLeft / 3600000));
+  return 'An activation link has already been sent for this account. Open it from your college inbox '
+    + '(check Spam too) or use "Resend activation link". '
+    + `You can sign up again in about ${hours} hour${hours === 1 ? '' : 's'}.`;
+}
+
+/**
+ * Hard-delete a never-activated account whose link has expired, so a fresh
+ * signup can take its email and enrollment number. Such an account could never
+ * sign in, so nothing else points at it; the application check is a backstop.
+ * The filter re-checks the state so a link verified or resent in the meantime
+ * leaves the account alone.
+ */
+async function removeAbandonedAccount(user) {
+  // Only match on ids the account actually has: `{ studentId: undefined }`
+  // would match every row that lacks the field.
+  const byStudentId = user.studentId ? [{ studentId: user.studentId }] : [];
+  const hasApplications = await Application.exists({ $or: [{ userId: user.id }, ...byStudentId] });
+  if (hasApplications) throw new ApiError(409, 'An account with these details already exists.');
+  const { deletedCount } = await User.deleteOne({
+    id: user.id,
+    emailVerified: false,
+    $or: [
+      { verifyTokenExpiresAt: { $exists: false } },
+      { verifyTokenExpiresAt: null },
+      { verifyTokenExpiresAt: { $lte: new Date().toISOString() } },
+    ],
+  });
+  if (!deletedCount) throw new ApiError(409, 'An account with these details already exists.');
+  await Student.deleteMany({ $or: [{ userId: user.id }, ...(user.studentId ? [{ id: user.studentId }] : [])] });
+}
 
 /** Merged user + student view matching the Student Portal `User` type. */
 function toProfile(user, student) {
@@ -162,8 +209,25 @@ async function register(payload) {
     User.findOne({ email: new RegExp(`^${escapeRegex(email)}$`, 'i'), ...notDeleted }).lean(),
     Student.findOne({ enrollmentNumber, ...notDeleted }).lean(),
   ]);
-  if (emailTaken) throw new ApiError(409, 'An account with this email is already registered.');
-  if (enrollTaken) throw new ApiError(409, 'An account with this enrollment number already exists.');
+  const enrollUser = enrollTaken
+    ? await User.findOne({ $or: [{ id: enrollTaken.userId }, { studentId: enrollTaken.id }], ...notDeleted }).lean()
+    : null;
+
+  // An account that was never activated does not hold the email / enrollment
+  // number for ever — the activation mail may simply never have arrived. While
+  // its link is still live the signup is refused (the student can resend the
+  // link instead); once the link has expired the abandoned account is cleared
+  // and this signup takes its place.
+  const emailPending = activationState(emailTaken);
+  const enrollPending = activationState(enrollUser);
+  if (emailTaken && !emailPending) throw new ApiError(409, 'An account with this email is already registered.');
+  if (enrollTaken && !enrollPending) throw new ApiError(409, 'An account with this enrollment number already exists.');
+  for (const u of [emailTaken, enrollUser]) {
+    if (u && activationState(u) === 'pending') throw new ApiError(409, pendingActivationMessage(u));
+  }
+  for (const u of new Map([emailTaken, enrollUser].filter(Boolean).map((u) => [u.id, u])).values()) {
+    await removeAbandonedAccount(u);
+  }
 
   // Institute + department must be a valid pair from the Admin-owned master
   // data. They are LOCKED after signup (only an Admin can change them later).
@@ -308,17 +372,20 @@ async function login(identifier, password) {
     throw new ApiError(401, 'Invalid credentials.');
   }
 
+  // Password first, so the activation / deactivation messages below only ever
+  // reach the account's owner.
+  const ok = await comparePassword(String(password), user.passwordHash);
+  if (!ok) throw new ApiError(401, 'Invalid credentials.');
+
   // Email ownership must be proven before the account is usable. Only an
   // explicit `false` blocks: accounts that predate verification have no field
   // and stay usable.
   if (user.emailVerified === false) {
-    throw new ApiError(403, 'Verify your college email before signing in. Check your inbox for the link.');
+    throw new ApiError(403, 'Your account is not activated yet. Open the activation link sent to your college email, then sign in again.');
   }
   if (user.status !== 'active') {
     throw new ApiError(403, 'Your account has been deactivated. Please contact administration.');
   }
-  const ok = await comparePassword(String(password), user.passwordHash);
-  if (!ok) throw new ApiError(401, 'Invalid credentials.');
 
   await User.updateOne({ id: user.id }, { $set: { lastLoginAt: new Date().toISOString() } });
   return toProfile(user, student);
