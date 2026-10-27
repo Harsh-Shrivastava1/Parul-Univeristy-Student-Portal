@@ -1,3 +1,5 @@
+> **Stale reference (written Jul 2026).** Parts of this file no longer match the code. Read `SYSTEM.md` and `AGENTS.md` at the repo root first; where they disagree, the code wins, then `SYSTEM.md`.
+
 # Student Portal — Maintenance Notes
 
 The Student Portal is **feature-complete and frozen**. This file tracks deferred

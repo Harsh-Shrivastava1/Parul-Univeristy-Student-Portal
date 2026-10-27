@@ -1,3 +1,5 @@
+> **Stale reference (written Jul 2026).** Parts of this file no longer match the code. Read `SYSTEM.md` and `AGENTS.md` at the repo root first; where they disagree, the code wins, then `SYSTEM.md`.
+
 # Student Portal — Architecture & Overview
 
 The Student Portal is one of **four independent applications** (Student, Coordinator,
