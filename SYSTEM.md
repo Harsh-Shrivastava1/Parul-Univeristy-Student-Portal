@@ -112,6 +112,7 @@ change streams. The sanctioned exceptions are listed in the table.
 | `notifications` | shared, one model | each portal creates rows for its recipients and marks only its own scope read | all |
 | `auditLogs` | shared, append-only | all | Admin |
 | `emailLogs` | shared, append-only | all | Admin (Email Monitoring) |
+| `emailTemplates` | TEC (Emails → Templates edits) | — | TEC mailer |
 | `securityEvents`, `sessions` | Admin | — | Admin |
 | `rateLimits` | Student, Coordinator (cluster-shared rate-limit counters, TTL) | — | — |
 | `cells`, `internships` and alias collections | **legacy** — `cells` became `departments` and `internships` was merged into `applications` | — | compatibility read layers only |
@@ -201,6 +202,18 @@ Notes:
   * Deleting a student also releases the enrollment number (`null`) so the
     person can sign up again. Lookups everywhere prefer live rows over deleted
     ones.
+* **Permanent delete** (Nov 2026, Admin → User Management → "Delete
+  permanently"). It is available for any role except admin, and an admin
+  cannot purge their own account.
+  * **Student:** removes the user, the student profile, every application and
+    its training, their notifications, and the generated PDFs. TEC's files sit
+    under `TEC_STORAGE_DIR`, the Coordinator's under `COORDINATOR_STORAGE_DIR`;
+    both default to the sibling repos.
+  * **Coordinator:** also frees their department.
+  * **Kept:** emailLogs and auditLogs. The purge itself is audited as
+    `USER_PURGED`, with counts.
+  * **Ownership:** this is the one sanctioned cross-collection write by Admin
+    (`backend/src/services/userPurgeService.ts`).
 * **Break-glass admin.** `npm run seed:breakglass` creates an admin hidden from
   User Management. Its credentials are handed to the university directly.
 
@@ -229,6 +242,18 @@ Canonical statuses (TEC `shared/constants.ts`): `Applied`,
 | Complete internship | `Joined` → `Internship Completed` | TEC or Coordinator | `internship_completed` email. The certificate is **physical**: the generator exists in TEC but is unused. |
 
 After any closing status the student **may apply to other internships**.
+
+**Display names (Nov 2026).** The interview is **Round 1** and department
+training is **Round 2**:
+
+* The officer's "Complete Interview" action is labelled **Round 1**. Its dialog
+  asks only for the training department and remarks; the server stores result
+  "Pass" and decision "Select For Training".
+* The status `Selected For Training` is **shown** as "Selected for Round 2"
+  everywhere: badges, filters, timeline, emails, notifications, reports and
+  the Student portal.
+* The **stored value is unchanged**, because every portal matches on it. Use
+  `applicationStatusLabel()` from TEC/Admin `shared/constants.ts` for display.
 
 ### Who reacts to what (change streams)
 
@@ -310,6 +335,31 @@ After any closing status the student **may apply to other internships**.
   institute/department email aliases and no `new_advertisement` template.
   **Do not reintroduce any of this.** Institutes and departments remain pure
   signup and placement master data.
+* **Outside production no mail reaches its real recipient** (Nov 2026). Local
+  copies read the same SMTP settings as the server, so before this guard a
+  click on a laptop mailed real students.
+  * When `NODE_ENV !== 'production'`, every backend's lowest-level send swaps
+    the recipient for **`EMAIL_DEV_REDIRECT`**. The intended address goes into
+    the subject as `[DEV → …]`.
+  * With `EMAIL_DEV_REDIRECT` unset, nothing is sent.
+  * The local `.env` files point it at the owner's own address. Production
+    never sets it.
+* **Email templates are edited in the Internship Cell portal** (Nov 2026).
+  * Emails → **Templates** lists every mail TEC sends: application received,
+    interview scheduled, rejection, Selected for Round 2, offer letter,
+    training completed and student joined (both to the inbox), terminated,
+    internship completed, and the two feedback requests.
+  * Officers edit the subject and the message as plain text with
+    `{{placeholders}}`, `**bold**`, `> ` highlight boxes, `{{details}}` (the
+    details table) and `{{button}}`. The branded header and footer are fixed.
+  * Edits are stored in **`emailTemplates`** (TEC-owned; one row per edited
+    template; no row = built-in default from
+    `backend/src/email/templates/editable.ts`). `sendTemplateEmail` uses the
+    saved text.
+  * The old Compose tab (manual one-off mails) and `POST /api/emails/send` were
+    **removed**.
+  * The Coordinator portal's own mails (department reject, terminate, complete)
+    still use its built-in text.
 * **Testing mail:** send only to the project owner's own address (ask them).
   Never send to real students or college staff.
 
@@ -495,6 +545,7 @@ cd Parul-respective-cell-portal          && npm run dev   # :5174
 | 5 Oct 2026 | **Go-live wipe** of test data (logs too) | Clean slate |
 | 6 Oct 2026 | Unactivated signups free up 24 h after the last link; login says "not activated" | Students whose mail failed were locked out forever |
 | 7 Oct 2026 | An outside security test hit production: `sectest_*` / `ratelimit*` signups, and brute force on a non-existent `admin@paruluniversity.ac.in`. Role injection was blocked, unverified accounts could not log in, and the unknown email gave no foothold. | Signup rate limits are lenient **by design** (campus NAT); a separate stricter signup limit is a possible improvement |
+| Nov 2026 | Interview renamed **Round 1**, department training **Round 2**; "Selected For Training" shown as "Selected for Round 2" (label only). TEC Applications page: all rows in one scroll, Semester column, no CGPA/Attendance/Min CGPA. TEC + Admin data tables lost pagination; log tables keep it. | Internship Cell request |
 
 ---
 

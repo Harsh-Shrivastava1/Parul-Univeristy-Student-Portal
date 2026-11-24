@@ -37,7 +37,7 @@ const STATUS_DESCRIPTIONS: Record<ApplicationStatus, string> = {
   'Under Review': 'The department coordinator is reviewing your application and profile.',
   'Interview Scheduled': 'Your interview has been scheduled.',
   'Interview Completed': 'Your interview has been completed. Awaiting results.',
-  Selected: 'You have been selected for the position.',
+  Selected: 'You have cleared Round 1 and been selected for Round 2, training in your assigned department.',
   'Assigned to Respective Cell': 'You have been assigned to your respective cell.',
   'Training Assigned': 'A training program has been assigned to you.',
   'Training Starts': 'Your training has commenced. Please ensure your attendance.',
@@ -67,6 +67,8 @@ function getStepTitle(step: ApplicationStatus, app?: Application | null): string
   }
   // The status key predates the rename; only the title shown here changes.
   if (step === 'Returned to TEC Cell') return 'Returned to Internship Cell';
+  // The interview is Round 1; department training is Round 2.
+  if (step === 'Selected') return 'Selected for Round 2';
   return step;
 }
 

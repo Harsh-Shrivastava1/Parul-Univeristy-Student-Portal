@@ -198,11 +198,11 @@ const LIFECYCLE_TEMPLATES = {
   }),
 
   selected_for_training: (d) => ({
-    subject: `Selected for training — ${d.role || 'Internship'}`,
+    subject: `Selected for Round 2 — ${d.role || 'Internship'}`,
     body:
       greeting(d) +
-      callout(`Congratulations! You have been <strong>selected for training</strong>.`, 'success') +
-      p(`Based on your performance, you have been selected to proceed to the training phase${d.company ? ` with <strong>${esc(d.company)}</strong>` : ''}.`) +
+      callout(`Congratulations! You have cleared Round 1 and been <strong>selected for Round 2</strong>.`, 'success') +
+      p(`Based on your performance, you have been selected to proceed to Round 2, the training phase${d.company ? ` with <strong>${esc(d.company)}</strong>` : ''}.`) +
       infoTable([
         ['Position', d.role],
         ['Company', d.company],

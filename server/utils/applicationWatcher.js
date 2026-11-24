@@ -67,8 +67,8 @@ const STATUS_MESSAGES = {
     type: 'success',
   },
   'Selected For Training': {
-    title: 'Application Approved — You Are Selected!',
-    message: (app) => `Congratulations! You have been selected for "${appTitle(app)}" and will be assigned to a training department.`,
+    title: 'Selected for Round 2!',
+    message: (app) => `Congratulations! You have cleared Round 1 for "${appTitle(app)}" and been selected for Round 2, training in your assigned department.`,
     type: 'success',
   },
   'Assigned to Respective Cell': {

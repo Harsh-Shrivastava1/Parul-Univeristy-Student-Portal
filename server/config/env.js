@@ -52,6 +52,8 @@ const env = {
   // Email is OPTIONAL and graceful — never required(). With no SMTP host the
   // mailer falls back to an Ethereal test inbox (preview URLs, no real send).
   email: {
+    // Outside production every mail goes here instead (see services/email/transporter.js).
+    devRedirect: (process.env.EMAIL_DEV_REDIRECT || '').trim(),
     host: process.env.SMTP_HOST || '',
     port: parseInt(process.env.SMTP_PORT || '587', 10),
     secure:

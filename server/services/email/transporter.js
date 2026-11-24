@@ -158,7 +158,30 @@ async function verifyTransport() {
  * Send a single message. Returns a normalized result — never throws.
  * { status: 'sent'|'failed', previewUrl, error, messageId }
  */
-async function sendMail(args) {
+/**
+ * Outside production no mail may reach a real person. Local copies of the
+ * portals read the same SMTP settings as the server, so without this a click
+ * on a laptop mails a real student. Every message goes to EMAIL_DEV_REDIRECT
+ * instead, with the intended recipient kept in the subject; with no redirect
+ * set, nothing is sent at all.
+ */
+function routeOutsideProduction(args) {
+  if (env.nodeEnv === 'production') return args;
+  const redirect = env.email.devRedirect;
+  if (!redirect) {
+    logger.warn('Email not sent: outside production and EMAIL_DEV_REDIRECT is unset', { to: args.to });
+    return null;
+  }
+  const intended = [args.to, args.cc].filter(Boolean).join(', ');
+  logger.info('Email redirected outside production', { intended, to: redirect });
+  return { ...args, to: redirect, cc: undefined, subject: `[DEV → ${intended}] ${args.subject}` };
+}
+
+async function sendMail(original) {
+  const args = routeOutsideProduction(original);
+  if (!args) {
+    return { status: 'failed', previewUrl: null, error: 'Not sent: outside production and EMAIL_DEV_REDIRECT is unset', messageId: null };
+  }
   try {
     const t = await getTransporter();
     const info = await t.sendMail({

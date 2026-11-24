@@ -19,8 +19,9 @@ const config: Record<ApplicationStatus, { label: string; className: string }> = 
     label: 'Interview Completed',
     className: 'bg-purple-100 text-purple-800 border border-purple-300',
   },
+  // The interview is Round 1; department training is Round 2.
   Selected: {
-    label: 'Selected',
+    label: 'Selected for Round 2',
     className: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
   },
   'Assigned to Respective Cell': {
