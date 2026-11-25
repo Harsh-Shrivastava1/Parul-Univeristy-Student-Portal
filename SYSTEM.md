@@ -232,7 +232,7 @@ Canonical statuses (TEC `shared/constants.ts`): `Applied`,
 | Withdraw | deleted | Student → TEC | Only while `Applied`; hard delete |
 | Shortlist | `Applied` → `Interview Scheduled` | TEC officer | Stores interview details; optional `interview_scheduled` email. Bulk shortlist uses today + 7 days, 10:00, "Internship Cell Office". |
 | Reject | → `Rejected` | TEC officer | Reason required (enum); optional email |
-| Interview complete | `Interview Scheduled` → `Selected For Training` | TEC officer | **Sets `assignedDepartment`**: one of the ad's `placementDepartments`, chosen by radio and validated server-side. Emails `selected_for_training`. The student now appears in that department's Coordinator portal. |
+| Interview complete (**Round 1**) | `Interview Scheduled` → `Selected For Training` | TEC officer | **Sets `assignedDepartment`**: picked from **all** active administrative departments in a searchable dropdown (since Nov 2026 ads carry no placement department) and validated against `departments`. This is the student's **post department** from then on. Emails `selected_for_training`. The student now appears in that department's Coordinator portal. |
 | Training starts | → `Training In Progress` | **Coordinator** writes `trainings` (ACTIVE) → **TEC change stream** projects the status | The projector only advances statuses and never clobbers later ones |
 | Training completes | → `Training Completed` | Coordinator writes `trainings` (COMPLETED, plus evaluation) → TEC projects | `training_completed` email to the Internship Cell inbox (`COORDINATOR_EMAIL`) |
 | Ready to join | `Training Completed` → `Ready To Join` | TEC officer | Requires the training to be COMPLETED with feedback, attendance and a recommendation. Stores joining details. Emails the **offer letter PDF** (`offer_letter`). |
@@ -242,6 +242,44 @@ Canonical statuses (TEC `shared/constants.ts`): `Applied`,
 | Complete internship | `Joined` → `Internship Completed` | TEC or Coordinator | `internship_completed` email. The certificate is **physical**: the generator exists in TEC but is unused. |
 
 After any closing status the student **may apply to other internships**.
+
+**Undo rejection** (Nov 2026, TEC → Rejection page, row menu or bulk):
+
+* **Statuses:** `Rejected`, `Rejected by Department` and `Terminated` all go
+  back to `Interview Scheduled` (the Shortlisted page). The earlier interview
+  date and time are kept; if there was none, the application has no date.
+* **Reset fields:** `assignedDepartment`, `interviewResult`, `joiningDetails`
+  and `trainingId` are cleared, so the application restarts from Round 1.
+* **Trainings:** any training on the application is **detached**:
+  `applicationId`/`studentId` move to `formerApplicationId`/`formerStudentId`
+  and `supersededAt` is set. This is TEC's one sanctioned write to
+  Coordinator-owned `trainings`. Coordinator and Admin training lists skip
+  `supersededAt` rows, so the department can start a fresh training after
+  Round 1.
+* **The student is not told.**
+  * There is no email.
+  * TEC deletes the student's notifications for the reset stages.
+  * The Student watcher creates no notification while the last timeline entry
+    is `rejection_undone`.
+  * The Student portal hides the reversed steps from the student's timeline.
+* **History:** the officer timeline and the audit log
+  (`APPLICATION_REJECTION_UNDONE`) keep the full history.
+
+**TEC list pages** (Nov 2026):
+
+| Page | Statuses |
+|---|---|
+| Applications | `Applied` only |
+| Shortlisted | `Interview Scheduled` |
+| Training | Selected for Round 2, Training In Progress, Training Completed, Ready To Join |
+| Joined | Joined, Internship Completed |
+| Rejection | Rejected, Rejected by Department, Terminated |
+
+* Row menus and bulk buttons show only the actions valid for the selected rows.
+* **Profile edits:** when a student edits their profile after applying, TEC
+  shows (and prints in the application PDF) the profile's current values over
+  the submitted form (`backend/src/utils/liveProfile.ts`). The stored form is
+  never rewritten.
 
 **Display names (Nov 2026).** The interview is **Round 1** and department
 training is **Round 2**:
@@ -374,8 +412,9 @@ training is **Round 2**:
     registered under it**: Admin returns 409 on rename or delete.
 * **Administrative departments:** 78 (ADMISSION CELL, HR DEPARTMENT, IQAC
   Cell, …), stored in `departments`.
-  * This is where internships happen: ad `placementDepartments[]`, routing and
-    coordinators.
+  * This is where internships happen: the Round 1 routing and coordinators.
+    Ads no longer pick departments (Nov 2026); older ads keep
+    `placementDepartments[]` for reference only.
   * **One department = one coordinator.** The Admin "create coordinator"
     dropdown shows only unclaimed departments. The link is stored as
     `departments.coordinatorId/coordinatorName` and `users.department`.
@@ -545,6 +584,7 @@ cd Parul-respective-cell-portal          && npm run dev   # :5174
 | 5 Oct 2026 | **Go-live wipe** of test data (logs too) | Clean slate |
 | 6 Oct 2026 | Unactivated signups free up 24 h after the last link; login says "not activated" | Students whose mail failed were locked out forever |
 | 7 Oct 2026 | An outside security test hit production: `sectest_*` / `ratelimit*` signups, and brute force on a non-existent `admin@paruluniversity.ac.in`. Role injection was blocked, unverified accounts could not log in, and the unknown email gave no foothold. | Signup rate limits are lenient **by design** (campus NAT); a separate stricter signup limit is a possible improvement |
+| Nov 2026 | **Placement department moved from the ad to Round 1**: ads have no department; at Round 1 the officer picks any department, which becomes the post department. Ads lists dropped the Department column/filter. | Internship Cell decision |
 | Nov 2026 | Interview renamed **Round 1**, department training **Round 2**; "Selected For Training" shown as "Selected for Round 2" (label only). TEC Applications page: all rows in one scroll, Semester column, no CGPA/Attendance/Min CGPA. TEC + Admin data tables lost pagination; log tables keep it. | Internship Cell request |
 
 ---

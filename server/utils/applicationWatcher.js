@@ -190,6 +190,18 @@ function buildNotificationDoc(app, status, when) {
   };
 }
 
+/**
+ * The Internship Cell undid a rejection: the application went back to
+ * Interview Scheduled on purpose, without telling the student. Its last
+ * timeline entry says so, and while it does, no notification is created for
+ * that status — by the watcher or by reconciliation.
+ */
+function isQuietRestore(app, status) {
+  const tl = Array.isArray(app && app.timeline) ? app.timeline : [];
+  const last = tl[tl.length - 1];
+  return !!last && last.type === 'rejection_undone' && last.currentStatus === status;
+}
+
 /** Stable per-(application, status) identity used for atomic de-duplication. */
 function dedupeKeyFor(applicationId, status) {
   return `app:${applicationId}:${status}`;
@@ -208,6 +220,7 @@ function dedupeKeyFor(applicationId, status) {
  * Returns true if this call actually created the notification.
  */
 async function createNotificationOnce(app, status, when) {
+  if (isQuietRestore(app, status)) return false;
   const doc = buildNotificationDoc(app, status, when);
   if (!doc) return false;
   if (await notificationExists(app, status)) return false;

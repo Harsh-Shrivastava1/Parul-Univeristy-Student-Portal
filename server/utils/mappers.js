@@ -95,6 +95,27 @@ function minimalInternship(app) {
   };
 }
 
+/**
+ * An undone rejection (or termination) is an Internship Cell correction the
+ * student is not told about. The application went back to Interview
+ * Scheduled, so drop the "rejection undone" entry and every step after the
+ * last interview (or the application itself) that it reversed: the student's
+ * timeline reads as if the rejection never happened.
+ */
+const RESET_TO = new Set(['Interview Scheduled', 'Applied']);
+function withoutUndoneRejections(timeline) {
+  const out = [];
+  for (const t of timeline) {
+    if (!t) continue;
+    if (t.type === 'rejection_undone') {
+      while (out.length && !RESET_TO.has(out[out.length - 1].currentStatus || out[out.length - 1].title)) out.pop();
+      continue;
+    }
+    out.push(t);
+  }
+  return out;
+}
+
 // applications (TEC) → frontend Application (with embedded Internship + timeline)
 function toApplication(app, ad) {
   const internship = toInternship(ad) || minimalInternship(app);
@@ -111,7 +132,8 @@ function toApplication(app, ad) {
 
   const timeline =
     Array.isArray(app.timeline) && app.timeline.length
-      ? app.timeline.map((t) => {
+      ? withoutUndoneRejections(app.timeline)
+        .map((t) => {
           const stepStatus = mapStatus(t.currentStatus || t.status || t.title);
           let notes = t.description || t.remarks || t.title || undefined;
           if (stepStatus === 'Assigned to Respective Cell' && assignedCell) {
