@@ -48,7 +48,9 @@ npm run build                           # tsc -b && vite build → dist/ (Nginx 
 | Rate limit (500/15 min, Mongo-shared across cluster workers) | `server/middleware/rateLimit.js`, `middleware/mongoRateStore.js` |
 | Status vocabulary for the UI | `server/utils/mappers.js` (`STATUS_MAP`), `src/components/shared/StatusBadge.tsx` |
 | Notification watcher (instance 0 only) | `server/utils/applicationWatcher.js` |
-| API clients for 3 backends, token refresh | `src/lib/apiClient.ts` |
+| API clients for 3 backends, token refresh, session-expired event | `src/lib/apiClient.ts` |
+| Session state, logout, re-check on tab focus | `src/hooks/useAuth.tsx` |
+| Page data refresh (focus, after a save, 20 s polling); use it instead of a bare `useEffect` | `src/hooks/useLiveLoad.ts` |
 | Login / Register / Verify pages | `src/pages/Login.tsx`, `Register.tsx`, `VerifyEmail.tsx` |
 | Client-side application PDF | `src/utils/generatePDF.ts` |
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Circle, Clock, FileText } from 'lucide-react';
@@ -16,6 +16,7 @@ import { EmptyState } from '../components/shared/EmptyState';
 import { formatDate, formatDateTime } from '../lib/dateUtils';
 import { isAttendanceFormAvailable } from '../lib/statusUtils';
 import { toast } from 'sonner';
+import { useLiveLoad } from '../hooks/useLiveLoad';
 
 const TIMELINE_STEPS: ApplicationStatus[] = [
   'Applied',
@@ -97,14 +98,17 @@ const ApplicationStatus: React.FC = () => {
   const [downloadingAttendance, setDownloadingAttendance] = useState(false);
   const [downloadingApp, setDownloadingApp] = useState(false);
 
-  useEffect(() => {
+  useLiveLoad(async () => {
     if (!user) return;
-    applicationService.getApplications(user.id).then((apps) => {
+    try {
+      const apps = await applicationService.getApplications(user.id);
       setApplications(apps);
-      if (apps.length > 0) setSelectedId(apps[0].id);
+      // Keep the student's pick across refreshes; fall back to the first one.
+      setSelectedId((cur) => (apps.some((a) => a.id === cur) ? cur : apps[0]?.id ?? ''));
+    } finally {
       setLoading(false);
-    });
-  }, [user]);
+    }
+  }, [user?.id]);
 
   const currentApp = applications.find((a) => a.id === selectedId);
   const progress = currentApp ? getProgressPercent(currentApp.status) : 0;

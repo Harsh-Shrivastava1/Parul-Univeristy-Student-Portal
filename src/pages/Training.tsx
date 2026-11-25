@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { applicationService } from '../services/applicationService';
 import { trainingService, type TrainingInfo } from '../services/trainingService';
@@ -7,6 +7,7 @@ import type { Application } from '../types';
 import { ArrowLeft, BookOpen, Clock, MapPin, User, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { isAttendanceFormAvailable } from '../lib/statusUtils';
+import { useLiveLoad } from '../hooks/useLiveLoad';
 
 export default function Training() {
   const { id } = useParams<{ id: string }>();
@@ -15,16 +16,18 @@ export default function Training() {
   const [training, setTraining] = useState<TrainingInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (id) {
-      Promise.all([
+  useLiveLoad(async ({ background }) => {
+    if (!id) return;
+    try {
+      const [app, tr] = await Promise.all([
         applicationService.getApplicationById(id),
         trainingService.getMyTraining(),
-      ]).then(([app, tr]) => {
-        setApplication(app || null);
-        setTraining(tr);
-        setLoading(false);
-      });
+      ]);
+      // Both reads swallow errors; a blank background answer is a failed read.
+      if (app || !background) setApplication(app || null);
+      if (tr || !background) setTraining(tr);
+    } finally {
+      setLoading(false);
     }
   }, [id]);
 

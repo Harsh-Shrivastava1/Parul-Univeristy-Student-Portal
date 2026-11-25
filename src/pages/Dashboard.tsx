@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -26,6 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
 import { formatDate } from '../lib/dateUtils';
+import { useLiveLoad } from '../hooks/useLiveLoad';
 
 // Skeleton
 const DashboardSkeleton = () => (
@@ -88,38 +89,23 @@ const Dashboard: React.FC = () => {
   const [applications, setApplications] = useState<Application[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  useEffect(() => {
-    let mounted = true;
-
-    const fetchAll = async () => {
-      if (!user) return;
-      try {
-        const [internships, apps, notifs] = await Promise.all([
-          internshipService.getInternships(),
-          applicationService.getApplications(user.id),
-          notificationService.getNotifications(user.id),
-        ]);
-        if (!mounted) return;
-        const openInternships = internships.filter((i) => i.status === 'Open');
-        setAllInternshipsCount(openInternships.length);
-        setRecommended(openInternships.slice(0, 3));
-        setApplications(apps);
-        setNotifications(notifs.slice(0, 3));
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchAll();
-    const intervalId = window.setInterval(fetchAll, 15000);
-
-    return () => {
-      mounted = false;
-      window.clearInterval(intervalId);
-    };
-  }, [user]);
+  useLiveLoad(async () => {
+    if (!user) return;
+    try {
+      const [internships, apps, notifs] = await Promise.all([
+        internshipService.getInternships(),
+        applicationService.getApplications(user.id),
+        notificationService.getNotifications(user.id),
+      ]);
+      const openInternships = internships.filter((i) => i.status === 'Open');
+      setAllInternshipsCount(openInternships.length);
+      setRecommended(openInternships.slice(0, 3));
+      setApplications(apps);
+      setNotifications(notifs.slice(0, 3));
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
 
   if (loading) return <DashboardSkeleton />;
 

@@ -1,3 +1,5 @@
+import { notifyDataChanged } from '../hooks/useLiveLoad';
+
 /**
  * Thin API client for the Student Portal.
  *
@@ -103,6 +105,41 @@ function refreshAccessToken(): Promise<boolean> {
   return refreshInFlight;
 }
 
+/**
+ * Fired when the session cannot be renewed (refresh cookie expired, account
+ * deleted or suspended). AuthProvider listens, signs the student out and
+ * sends them to the login page, as the Internship Cell and Admin portals do.
+ */
+export const SESSION_EXPIRED = 'pu:session-expired';
+
+function sessionExpired(): void {
+  setAccessToken(null);
+  window.dispatchEvent(new Event(SESSION_EXPIRED));
+}
+
+/**
+ * Auth endpoints answer 401 for a wrong password and the like, which says
+ * nothing about the session. Only /auth/me reports on the session itself.
+ */
+function renewsOn401(path: string): boolean {
+  // /auth/logout too: with an expired access token it would 401 and leave the
+  // refresh cookie behind, and the next visit would sign the student back in.
+  return !path.startsWith('/auth/') || path === '/auth/me' || path === '/auth/logout';
+}
+
+/**
+ * A 401 means the access token ran out: renew it once and retry. If it cannot
+ * be renewed the session is over. This used to try only while a token sat in
+ * localStorage and never signed the student out, so an expired session stayed
+ * "logged in" with every page empty.
+ */
+async function handle401(path: string): Promise<boolean> {
+  if (!renewsOn401(path)) return false;
+  const ok = await refreshAccessToken();
+  if (!ok) sessionExpired();
+  return ok;
+}
+
 async function request<T>(
   base: string,
   path: string,
@@ -117,9 +154,8 @@ async function request<T>(
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 
-  if (res.status === 401 && retry && accessToken) {
-    const ok = await refreshAccessToken();
-    if (ok) return request<T>(base, path, method, body, false);
+  if (res.status === 401 && retry && (await handle401(path))) {
+    return request<T>(base, path, method, body, false);
   }
 
   let json: ApiEnvelope<T> = { success: false };
@@ -132,6 +168,8 @@ async function request<T>(
   if (!res.ok || json.success === false) {
     throw new Error(errorText(json, res.status));
   }
+  // Any successful write may change what other pages show: let them refresh.
+  if (method !== 'GET') notifyDataChanged();
   return json.data as T;
 }
 
@@ -141,9 +179,8 @@ async function requestBlob(base: string, path: string, retry = true): Promise<Bl
     headers: { ...authHeaders() },
   });
 
-  if (res.status === 401 && retry && accessToken) {
-    const ok = await refreshAccessToken();
-    if (ok) return requestBlob(base, path, false);
+  if (res.status === 401 && retry && (await handle401(path))) {
+    return requestBlob(base, path, false);
   }
 
   if (!res.ok) {

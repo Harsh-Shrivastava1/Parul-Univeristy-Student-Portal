@@ -24,6 +24,7 @@ import ChangePasswordCard from '../components/ChangePasswordCard';
 import { toast } from 'sonner';
 import { formatDate } from '../lib/dateUtils';
 import { isAttendanceFormAvailable } from '../lib/statusUtils';
+import { useLiveLoad } from '../hooks/useLiveLoad';
 
 const schema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -86,21 +87,21 @@ const Profile: React.FC = () => {
   const chosenInstitute = watch('institute');
   const instituteDepts = institutes.find((i) => i.code === chosenInstitute)?.departments ?? [];
 
-  const loadProfile = async () => {
+  const loadProfile = async ({ background = false }: { background?: boolean } = {}) => {
     if (!authUser) return;
-    // Option B: fetch from MongoDB students by enrollmentNumber.
-    // Falls back to authUser session data if not found in DB.
-    const dbData = await profileService.getUserProfile(authUser.enrollmentNumber);
-    const data = dbData ?? authUser;
+    try {
+      // Option B: fetch from MongoDB students by enrollmentNumber.
+      // Falls back to authUser session data if not found in DB.
+      const dbData = await profileService.getUserProfile(authUser.enrollmentNumber);
+      if (!dbData && background) return; // failed refresh: keep what is shown
+      const data = dbData ?? authUser;
 
-    if (data) {
-      const apps = await applicationService.getApplications(data.enrollmentNumber || data.id);
-      setApplications(apps);
+      setProfile(data);
+      reset(toFormValues(data));
+      setApplications(await applicationService.getApplications(data.enrollmentNumber || data.id));
+    } finally {
+      setLoading(false);
     }
-
-    setProfile(data);
-    reset(toFormValues(data));
-    setLoading(false);
   };
 
   // Map a profile into the edit-form shape (numbers → strings for inputs).
@@ -128,7 +129,8 @@ const Profile: React.FC = () => {
     };
   };
 
-  useEffect(() => { loadProfile(); }, [authUser]);
+  // Background refreshes pause while the form is open, or they would reset it.
+  useLiveLoad(loadProfile, [authUser], { enabled: !editing });
 
   const onSave = async (data: FormValues) => {
     if (!authUser || !profile) return;

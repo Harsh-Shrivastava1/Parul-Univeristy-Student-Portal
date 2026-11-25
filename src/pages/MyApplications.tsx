@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FileText, Eye, Trash2, Download, Briefcase, CheckCircle, Clock, Loader2 } from 'lucide-react';
@@ -22,6 +22,7 @@ import {
 import { toast } from 'sonner';
 import { formatDate, formatDateTime } from '../lib/dateUtils';
 import { isAttendanceFormAvailable } from '../lib/statusUtils';
+import { useLiveLoad } from '../hooks/useLiveLoad';
 
 const SummaryCard: React.FC<{ label: string; value: number; icon: React.ReactNode; color: string; bg: string }> = ({
   label, value, icon, color, bg,
@@ -75,20 +76,27 @@ const MyApplications: React.FC = () => {
 
   const fetchApps = async () => {
     if (!user) return;
-    const apps = await applicationService.getApplications(user.id);
-    setApplications(apps);
-    setLoading(false);
+    try {
+      setApplications(await applicationService.getApplications(user.id));
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { fetchApps(); }, [user]);
+  useLiveLoad(fetchApps, [user?.id]);
 
   const handleWithdraw = async (app: Application) => {
     if (!confirm(`Are you sure you want to withdraw your application for "${app.internship.postName}"?`)) return;
     setWithdrawing(app.id);
-    await applicationService.withdrawApplication(app.id);
-    toast.success('Application withdrawn successfully.');
-    await fetchApps();
-    setWithdrawing(null);
+    try {
+      await applicationService.withdrawApplication(app.id);
+      toast.success('Application withdrawn successfully.');
+      await fetchApps();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not withdraw the application.');
+    } finally {
+      setWithdrawing(null);
+    }
   };
 
   const metrics = {

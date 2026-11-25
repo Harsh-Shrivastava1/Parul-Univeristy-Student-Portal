@@ -49,7 +49,7 @@ with its own backend and frontend. All four share **one MongoDB database**.
 | Dev ports (API / UI) | 4000 / 3000 | 4100 / 3100 | **5002** / 5173 | 5001 / 5174 |
 | Production URL | `https://cell.internship.paruluniversity.ac.in` | `https://admin.internship.paruluniversity.ac.in` | `https://student.internship.paruluniversity.ac.in` | `https://coordinator.internship.paruluniversity.ac.in` |
 | PM2 processes | `tec-backend` (fork ×1), `tec-frontend` | `admin-backend` (fork ×1), `admin-frontend` | `student-backend` (cluster ×2) | `coordinator-backend` (cluster ×2) |
-| Realtime | Socket.IO + change stream | Socket.IO + change stream | change-stream watcher (notifications), UI polls | none |
+| Realtime | Socket.IO + change stream | Socket.IO + change stream | change-stream watcher (notifications); UI refreshes via `useLiveLoad` | UI refreshes via `useLiveLoad` |
 
 * **"TEC"** is the old internal name of the Internship Cell portal ("Technical
   Events Cell"). It survives in identifiers such as `tec-backend`, the
@@ -214,6 +214,36 @@ Notes:
     `USER_PURGED`, with counts.
   * **Ownership:** this is the one sanctioned cross-collection write by Admin
     (`backend/src/services/userPurgeService.ts`).
+* **Student and Coordinator SPA sessions** (Nov 2026). Before this, the
+  Student logout cleared only the screen (the token in localStorage and the
+  refresh cookie survived, so a reload signed the student back in). The
+  Coordinator SPA trusted a session saved in localStorage and never renewed
+  it, so after 15 minutes it stayed "logged in" with empty pages.
+  * **401 handling:** each `lib/apiClient.ts` answers a 401 with one shared
+    `POST /auth/refresh` and a retry. If the refresh fails, it fires
+    `pu:session-expired`; the SPA clears the session and shows the login
+    page with "Your session has ended".
+  * **Excluded from renewal:** `/auth/*` calls such as login, where a 401
+    means a wrong password. `/auth/me` and `/auth/logout` still renew.
+  * **Session checks:** the Coordinator checks its saved session with
+    `/auth/me` on load. Both SPAs re-check it when the tab regains focus,
+    at most once a minute.
+  * **Server side:** `/auth/me` and `/auth/refresh` return **401** for a
+    deleted or suspended account (Student `authService.getProfile`,
+    Coordinator `utils/identity.loadCoordinator`).
+  * **Logout** ends the session on the server too.
+* **Fresh data in the Student and Coordinator SPAs.** These SPAs have no
+  sockets, because they are clustered without sticky sessions. Instead, each
+  list page loads its data through `src/hooks/useLiveLoad.ts`:
+  * on mount;
+  * when the tab regains focus;
+  * right after any successful write by the SPA (`apiClient` fires
+    `pu:data-changed`);
+  * every 20 s (Student) or 15 s (Coordinator) while the tab is visible.
+
+  Background refreshes keep the page on screen, with no spinner. Pages with
+  forms (apply, start training, evaluation, and Profile while it is being
+  edited) pause the background refreshes.
 * **Break-glass admin.** `npm run seed:breakglass` creates an admin hidden from
   User Management. Its credentials are handed to the university directly.
 
@@ -632,8 +662,8 @@ cd Parul-respective-cell-portal          && npm run dev   # :5174
 |---|---|---|
 | 1 | Student `server/utils/mappers.js` | `STATUS_MAP` has no `Rejected by Department` or `Terminated`, so it falls back to **`Applied`**. The student sees the wrong status after a department rejection or termination. |
 | 2 | Admin settings page | Saving the Email card without retyping the password sends `smtpPassword:""`, which clears the stored password. Mail then silently falls back to env `SMTP_PASS`. The backend ignores only `********`. |
-| 3 | TEC, Student, Coordinator `/auth/refresh` | They don't re-check `status` / `isDeleted`, so a suspended or deleted user keeps a session for up to 7 days. Admin is safe because it is session-backed. |
-| 4 | Coordinator SPA | Never calls `/auth/refresh`, so sessions end when the 15-minute access cookie expires |
+| 3 | TEC `/auth/refresh` | Doesn't re-check `status` / `isDeleted`, so a suspended or deleted officer keeps a session for up to 7 days. Admin is safe because it is session-backed; Student and Coordinator were fixed in Nov 2026 (§4). |
+| 4 | Student, Coordinator APIs | Data routes check only the JWT, so a suspended account keeps reading for up to 15 minutes, until its access token expires or the tab re-checks `/auth/me`. |
 | 5 | Student `/me/profile` | Lets students edit institute, department and semester, contradicting "locked after signup". `degree` and `passingYear` are accepted but dropped by validation. |
 | 6 | TEC projector | Writes `status` but not `applicationStatus`; reads rely on `applicationStatus ?? status` plus the read-time training overlay |
 | 7 | TEC data layer | Compatibility reads do full collection scans with in-memory filter and pagination |

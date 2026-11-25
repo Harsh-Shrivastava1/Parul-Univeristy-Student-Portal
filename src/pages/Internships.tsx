@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Briefcase, Search, SlidersHorizontal, X, Calendar, Users, ChevronRight } from 'lucide-react';
@@ -12,6 +12,7 @@ import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { formatDate } from '../lib/dateUtils';
+import { useLiveLoad } from '../hooks/useLiveLoad';
 
 const DURATIONS = ['All', '1 Month', '2 Months', '3 Months', '4 Months', '6 Months'];
 const STATUSES = ['All', 'Open', 'Closed'];
@@ -95,23 +96,12 @@ const Internships: React.FC = () => {
   const [status, setStatus] = useState('All');
   const [showFilters, setShowFilters] = useState(false);
 
-  useEffect(() => {
-    let mounted = true;
-
-    const load = async () => {
-      const data = await internshipService.getInternships();
-      if (!mounted) return;
-      setInternships(data);
+  useLiveLoad(async () => {
+    try {
+      setInternships(await internshipService.getInternships());
+    } finally {
       setLoading(false);
-    };
-
-    load();
-    const intervalId = window.setInterval(load, 15000);
-
-    return () => {
-      mounted = false;
-      window.clearInterval(intervalId);
-    };
+    }
   }, []);
 
   const filtered = useMemo(() => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -22,6 +22,7 @@ import { Skeleton } from '../components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { toast } from 'sonner';
 import { formatDate } from '../lib/dateUtils';
+import { useLiveLoad } from '../hooks/useLiveLoad';
 
 function timeAgo(date: string): string {
   const diff = Date.now() - new Date(date).getTime();
@@ -51,14 +52,14 @@ const Notifications: React.FC = () => {
   // tab is still there to look back over what has been read.
   const [filter, setFilter] = useState<'all' | 'unread'>('unread');
 
-  const fetchNotifications = async () => {
+  useLiveLoad(async () => {
     if (!user) return;
-    const data = await notificationService.getNotifications(user.id);
-    setNotifications(data);
-    setLoading(false);
-  };
-
-  useEffect(() => { fetchNotifications(); }, [user]);
+    try {
+      setNotifications(await notificationService.getNotifications(user.id));
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
 
   const handleMarkRead = async (id: string) => {
     await notificationService.markAsRead(id);

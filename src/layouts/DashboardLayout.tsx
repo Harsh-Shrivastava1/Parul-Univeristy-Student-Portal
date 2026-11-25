@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { notificationService } from '../services/notificationService';
+import { useLiveLoad } from '../hooks/useLiveLoad';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { formatDate } from '../lib/dateUtils';
 
@@ -45,22 +46,15 @@ export const DashboardLayout: React.FC = () => {
     mainRef.current?.scrollTo(0, 0);
   }, [location.pathname]);
 
-  useEffect(() => {
-    if (user) {
-      notificationService.getUnreadCount(user.id).then(setUnreadCount);
-    }
-  }, [user]);
+  // Unread badge: refreshed with the page data (focus, after a save, polling).
+  useLiveLoad(async () => {
+    if (!user) return;
+    setUnreadCount(await notificationService.getUnreadCount(user.id));
+  }, [user?.id]);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (user) notificationService.getUnreadCount(user.id).then(setUnreadCount);
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [user]);
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login', { replace: true });
   };
 
   const getInitials = (name?: string) =>

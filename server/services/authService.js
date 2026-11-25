@@ -394,7 +394,12 @@ async function login(identifier, password) {
 /** Current authenticated student's merged profile. */
 async function getProfile(userId) {
   const user = await User.findOne({ id: userId, role: 'student' }).lean();
-  if (!user) throw new ApiError(404, 'Account not found.');
+  // 401, not 404: /auth/me and /auth/refresh use this, and the SPA signs the
+  // student out on a 401. A deleted or suspended account must lose its session
+  // instead of living on until the refresh cookie runs out.
+  if (!user || user.isDeleted || user.status !== 'active') {
+    throw new ApiError(401, 'Your session has ended. Please sign in again.');
+  }
   const student = await Student.findOne({
     $or: [{ id: user.studentId }, { userId: user.id }],
   }).lean();

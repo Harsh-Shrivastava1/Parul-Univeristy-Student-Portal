@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -25,6 +25,7 @@ import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
 import { toast } from 'sonner';
 import { formatDate } from '../lib/dateUtils';
+import { useLiveLoad } from '../hooks/useLiveLoad';
 
 const InternshipDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -35,21 +36,23 @@ const InternshipDetails: React.FC = () => {
   const [alreadyApplied, setAlreadyApplied] = useState(false);
   const [checkingApp, setCheckingApp] = useState(true);
 
-  useEffect(() => {
+  useLiveLoad(async ({ background }) => {
     if (!id) return;
-    internshipService.getInternshipById(id).then((data) => {
-      setInternship(data ?? null);
-      setLoading(false);
-    });
+    const data = await internshipService.getInternshipById(id);
+    // A failed background read keeps the advert on screen.
+    if (data || !background) setInternship(data ?? null);
+    setLoading(false);
   }, [id]);
 
-  useEffect(() => {
+  useLiveLoad(async () => {
     if (!user || !id) return;
-    applicationService.getApplications(user.id).then((apps) => {
+    try {
+      const apps = await applicationService.getApplications(user.id);
       setAlreadyApplied(apps.some((a) => a.internshipId === id));
+    } finally {
       setCheckingApp(false);
-    });
-  }, [user, id]);
+    }
+  }, [user?.id, id]);
 
   if (loading) {
     return (
