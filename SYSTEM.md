@@ -299,13 +299,15 @@ After any closing status the student **may apply to other internships**.
 
 | Page | Statuses |
 |---|---|
-| Applications | `Applied` only |
+| Applications | **every** status; the current status shows under the applied post |
 | Shortlisted | `Interview Scheduled` |
 | Training | Selected for Round 2, Training In Progress, Training Completed, Ready To Join |
 | Joined | Joined, Internship Completed |
 | Rejection | Rejected, Rejected by Department, Terminated |
 
 * Row menus and bulk buttons show only the actions valid for the selected rows.
+* Shortlisted has no Post Dept column or filter: the post department is picked
+  at Round 1, so it is always empty there.
 * **Profile edits:** when a student edits their profile after applying, TEC
   shows (and prints in the application PDF) the profile's current values over
   the submitted form (`backend/src/utils/liveProfile.ts`). The stored form is
